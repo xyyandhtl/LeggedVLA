@@ -1,0 +1,13 @@
+.idea/
+
+__pycache__*
+
+logs/
+scripts/
+
+deploy_ros2/build
+deploy_ros2/install
+deploy_ros2/log
+
+training_vla/NavRL/outputs
+training_vla/NavRL/wandb
