@@ -47,17 +47,15 @@ dmypy.json
 .vscode/
 
 # PyCharm
-.idea/
-*.iml
+#.idea/
+#*.iml
 
 # macOS
 .DS_Store
 
 # JetBrains IDEs
-*.idea/
 *.ipr
 *.iws
-*.iml
 out/
 
 # Ignore environment variables or configuration
