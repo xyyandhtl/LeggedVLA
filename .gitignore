@@ -1,13 +1,101 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+*.egg-info/
+*.eggs/
+
+# Distribution / packaging
+build/
+dist/
+*.whl
+pip-wheel-metadata/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+*.sqlite
+*.pkl
+*.h5
+
+# Test coverage reports
+htmlcov/
+*.cover
+.coverage
+*.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# VS Code
+.vscode/
+
+# PyCharm
 .idea/
+*.iml
 
-__pycache__*
+# macOS
+.DS_Store
 
+# JetBrains IDEs
+*.idea/
+*.ipr
+*.iws
+*.iml
+out/
+
+# Ignore environment variables or configuration
+.env
+.env.local
+.env.*.local
+
+# Ignore temporary files
+*.swp
+*.swo
+*~
+
+# Ignore Docker-related files
+docker-compose.override.yml
+
+# Ignore compiled shared libraries
+*.so
+*.o
+
+# Ignore version files
+*/tensordict/version.py
+
+# Ignore Warp build artifacts
+*/warp/_build/
+*/warp/warp/native/*.o
+
+# Ignore some postfix file temporaly
+*.pt
+*.pth
+*.mp4
+
+# Ignore specific folders
 logs/
-scripts/
 
 deploy_ros2/build
 deploy_ros2/install
 deploy_ros2/log
 
+training_vla/NavRL/third_party
 training_vla/NavRL/outputs
 training_vla/NavRL/wandb
