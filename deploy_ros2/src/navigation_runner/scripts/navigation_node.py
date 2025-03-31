@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
-from navigation import Navigation
+from navigation_navrl import Navigation
 from hydra import compose, initialize
 
 RELATIVE_FILE_PATH = "cfg"

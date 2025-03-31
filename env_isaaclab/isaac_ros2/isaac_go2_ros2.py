@@ -77,6 +77,7 @@ def run_simulator(cfg):
         with torch.inference_mode():            
             # control joints
             actions = policy(obs)
+            # print(f'[{start_time}] actions: {actions}')
 
             # step the environment
             obs, _, _, _ = env.step(actions)

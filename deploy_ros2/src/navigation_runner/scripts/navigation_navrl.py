@@ -14,8 +14,8 @@ import numpy as np
 from torchrl.data import CompositeSpec, UnboundedContinuousTensorSpec
 from tensordict.tensordict import TensorDict
 from torchrl.envs.utils import ExplorationType, set_exploration_type
-from ppo import PPO
-from utils import vec_to_new_frame, vec_to_world
+from navrl.ppo import PPO
+from navrl.utils import vec_to_new_frame, vec_to_world
 from pid_controller import AnglePIDController
 import os
 
