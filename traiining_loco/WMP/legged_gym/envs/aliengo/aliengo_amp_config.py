@@ -236,6 +236,7 @@ class AlienGoAMPCfg(LeggedRobotCfg):
         reward_curriculum = True
         reward_curriculum_term = ["feet_edge"]
         reward_curriculum_schedule = [[4000, 10000, 0.1, 1.0]]
+        # reward_curriculum_schedule = [[3000, 4000, 0.1, 1.0]]
 
         soft_dof_pos_limit = 0.9
         base_height_target = 0.30
@@ -246,13 +247,13 @@ class AlienGoAMPCfg(LeggedRobotCfg):
         class scales(LeggedRobotCfg.rewards.scales):
             tracking_lin_vel = 1.5
             tracking_ang_vel = 0.5
-            torques = -0.0001
+            torques = -0.00003
             dof_acc = -2.5e-7
             base_height = -0.
             feet_air_time = 0.5
             collision = -1.0
             feet_stumble = -0.1
-            action_rate = -0.03
+            action_rate = -0.02
 
             feet_edge = -1.0
             dof_error = -0.04

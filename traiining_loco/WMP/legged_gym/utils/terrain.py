@@ -138,17 +138,27 @@ class Terrain:
                                            length=self.width_per_env_pixels,
                                            vertical_scale=self.cfg.vertical_scale,
                                            horizontal_scale=self.cfg.horizontal_scale)
-        amplitude = 0.1 + 0.2 * difficulty
-        slope = difficulty * 0.4
-        step_height = 0.05 + 0.18 * difficulty
-        discrete_obstacles_height = 0.05 + difficulty * 0.2
-        stepping_stones_size = 1.5 * (1.05 - difficulty)
-        stone_distance = 0.05 if difficulty == 0 else 0.1
-        gap_size = 1. * difficulty
-        pit_depth = 0.6 * difficulty
-        tilt_width = 0.4 - 0.04 * difficulty   # for aliengo
+        # amplitude = 0.1 + 0.2 * difficulty
+        # slope = difficulty * 0.4
+        # step_height = 0.05 + 0.18 * difficulty
+        # discrete_obstacles_height = 0.05 + difficulty * 0.2
+        # stepping_stones_size = 1.5 * (1.05 - difficulty)
+        # stone_distance = 0.05 if difficulty == 0 else 0.1
+        # gap_size = 1. * difficulty
+        # pit_depth = 0.6 * difficulty
         # tilt_width = 0.32 - 0.04 * difficulty
         stair_step_width = 0.30 + random.random() * 0.04
+
+        # for aliengo
+        amplitude = 0.1 + 0.25 * difficulty
+        slope = difficulty * 0.5
+        step_height = 0.05 + 0.24 * difficulty  # for aliengo
+        discrete_obstacles_height = 0.05 + difficulty * 0.25
+        stepping_stones_size = 1.5 * (1.05 - difficulty)
+        stone_distance = 0.05 if difficulty == 0 else 0.1
+        gap_size = 1.2 * difficulty     # for aliengo
+        pit_depth = 0.7 * difficulty    # for aliengo
+        tilt_width = 0.4 - 0.06 * difficulty    # for aliengo
         if choice < self.proportions[0]:
             terrain_utils.wave_terrain(terrain, num_waves=5, amplitude=amplitude)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
@@ -269,7 +279,8 @@ class Terrain:
             )
 
         elif choice < self.proportions[8]:
-            crawl_height = 0.45 - 0.2 * difficulty
+            crawl_height = 0.45 - 0.25 * difficulty  # for aliengo
+            # crawl_height = 0.35 - 0.15 * difficulty  # for a1
             env_origin_x = (i + 0.5) * self.env_length
             env_origin_y = (j + 0.5) * self.env_width
             box_x = 0.2 + 0.2 * np.random.random()

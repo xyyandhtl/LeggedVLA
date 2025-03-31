@@ -238,9 +238,9 @@ def play(args):
         if MOVE_CAMERA:
             # camara_position = env.root_states[2, :3].detach().cpu().numpy() + [0.32, 0, 0.03]
             # lootat = camara_position + [1.0, 0, 0]
-            lootat = env.root_states[4, :3]
-            camara_position = lootat.detach().cpu().numpy() + [0, -2.5, 0]
-            # camara_position = lootat.detach().cpu().numpy() + [-3.0, 0, 0.5]
+            lootat = env.root_states[3, :3]     # 0-4: stairs, gap, pit, tilt, crawl
+            # camara_position = lootat.detach().cpu().numpy() + [0, -2.5, 0]
+            camara_position = lootat.detach().cpu().numpy() + [-3.0, 0, 0.5]
             env.set_camera(camara_position, lootat)
 
         if i < stop_state_log:
