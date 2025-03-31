@@ -112,7 +112,7 @@ def create_warehouse_shelves_env():
     prim.GetReferences().AddReference(asset_path)
 
 def create_full_warehouse_env():
-    add_semantic_label()
+    # add_semantic_label()
     assets_root_path = get_assets_root_path()
     print(f'assets_root_path {assets_root_path}')
     prim = get_prim_at_path("/World/Warehouse")

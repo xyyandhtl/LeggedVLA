@@ -20,18 +20,10 @@ def run_simulator(cfg):
     import ros2.go2_ros2_bridge as go2_ros2_bridge
     from go2.go2_env import Go2RSLEnvCfg, camera_follow
     import env.sim_env as sim_env
+    import env.matterport3d_env as matterport3d_env
     import go2.go2_sensors as go2_sensors
 
-
-    # Go2 Environment setup
-    go2_env_cfg = Go2RSLEnvCfg()
-    go2_env_cfg.scene.num_envs = cfg.num_envs
-    go2_env_cfg.decimation = math.ceil(1./go2_env_cfg.sim.dt/cfg.freq)
-    go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
-    go2_ctrl.init_base_vel_cmd(cfg.num_envs)
-    # env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
-    env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
-
+    init_pos = (0, 0, 0)
     # Simulation environment
     if (cfg.env_name == "obstacle-dense"):
         sim_env.create_obstacle_dense_env() # obstacles dense
@@ -51,6 +43,17 @@ def run_simulator(cfg):
         sim_env.create_office_env() #
     elif (cfg.env_name == "hospital"):
         sim_env.create_hospital_env() #
+    elif (cfg.env_name == "matterport3d"):
+        matterport3d_env.create_matterport3d_env(cfg.episode_idx) # matterport3d
+
+    # Go2 Environment setup
+    go2_env_cfg = Go2RSLEnvCfg()
+    go2_env_cfg.scene.num_envs = cfg.num_envs
+    go2_env_cfg.decimation = math.ceil(1. / go2_env_cfg.sim.dt / cfg.freq)
+    go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
+    go2_ctrl.init_base_vel_cmd(cfg.num_envs)
+    env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
+    # env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
 
     # Sensor setup
     sm = go2_sensors.SensorManager(cfg.num_envs)

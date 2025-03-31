@@ -18,12 +18,13 @@ import go2.go2_ctrl as go2_ctrl
 
 @configclass
 class Go2SimCfg(InteractiveSceneCfg):
+    init_pos = (0, 0, 0)    # mp3d scene search log: mp3d episode init_pos, replace it
     # ground plane
-    ground = AssetBaseCfg(prim_path="/World/ground", 
-                          spawn=sim_utils.GroundPlaneCfg(color=(0.1, 0.1, 0.1), size=(300., 300.)),
-                          init_state=AssetBaseCfg.InitialStateCfg(
-                              pos=(0, 0, 1e-4)
-                          ))
+    # ground = AssetBaseCfg(prim_path="/World/ground",
+    #                       spawn=sim_utils.GroundPlaneCfg(color=(0.1, 0.1, 0.1), size=(300., 300.)),
+    #                       init_state=AssetBaseCfg.InitialStateCfg(
+    #                           pos=(0, 0, 1e-4)
+    #                       ))
     
     # Lights
     light = AssetBaseCfg(
@@ -34,13 +35,28 @@ class Go2SimCfg(InteractiveSceneCfg):
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(color=(0.2, 0.2, 0.3), intensity=2000.0),
     )
+    cylinder_light = AssetBaseCfg(
+        prim_path="/World/cylinderLight",
+        spawn=sim_utils.CylinderLightCfg(
+            length=100, radius=0.3, treat_as_line=False, intensity=10000.0
+        ),
+    )
+    cylinder_light.init_state.pos = (init_pos[0], init_pos[1], init_pos[2] + 2.0)
 
     # Go2 Robot
     unitree_go2: ArticulationCfg = UNITREE_GO2_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Go2",
-        # init_state=ArticulationCfg.InitialStateCfg(
-        #    pos=(0, 0, 0),  # 设置初始位置
-        # )
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(init_pos[0], init_pos[1], init_pos[2] + 0.4),
+            joint_pos={
+                ".*L_hip_joint": 0.1,
+                ".*R_hip_joint": -0.1,
+                "F[L,R]_thigh_joint": 0.8,
+                "R[L,R]_thigh_joint": 1.0,
+                ".*_calf_joint": -1.5,
+            },
+            joint_vel={".*": 0.0},
+        ),
     )
 
     # Go2 foot contact sensor
@@ -49,12 +65,14 @@ class Go2SimCfg(InteractiveSceneCfg):
     # Go2 height scanner
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Go2/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20)), 
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.5)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]), 
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
         debug_vis=False,
-        mesh_prim_paths=["/World/ground"],
+        mesh_prim_paths=["/World/Mp3d/mesh"],
+        # mesh_prim_paths=["/World/ground"],
     )
+    del init_pos
 
 @configclass
 class ActionsCfg:
@@ -152,7 +170,7 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         # viewer settings
-        self.viewer.eye = [-4.0, 0.0, 1.0]
+        self.viewer.eye = [-1.2, 0.0, 0.5]
         self.viewer.lookat = [0.0, 0.0, 0.0]
 
         # step settings
@@ -182,6 +200,6 @@ def camera_follow(env):
         yaw = rotation.as_euler('zyx')[0]
         yaw_rotation = R.from_euler('z', yaw).as_matrix()
         set_camera_view(
-            yaw_rotation.dot(np.asarray([-4.0, 0.0, 1.0])) + robot_position,
+            yaw_rotation.dot(np.asarray([-1.2, 0.0, 0.5])) + robot_position,
             robot_position
         )

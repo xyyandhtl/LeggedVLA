@@ -1,5 +1,6 @@
-+ 好像isaaclab1.4以前，rsl-rl的代码很多工程都是自己提供了一份，貌似是从官方源码安装会有bug，就不放进来了，后续需要老版本isaaclab去相应原项目内获取
-+ 自测isaac-sim-4.2.0.2支持isacclab1.4了，最早是哪个版本未测，但isaac-sim-4.1是不兼容，所以暂只能用两个环境如[requirements_isaaclab4.1.txt](requirements_isaaclab4.1.txt)和[requirements_isaaclab4.2.txt](requirements_isaaclab4.2.txt)
++ 好像isaaclab1.4以前，rsl-rl的代码很多工程都是自己提供了一份，貌似是从官方源码安装-i rsl-rl拉取rsl-rl会有不兼容bug，也有项目作者自己需要的一些改动的原因。后续需要老版本isaaclab去相应原项目内获取其rsl-rl版本
++ 因为以上rsl-rl版本混杂的原因，所以暂只能用两个环境如[requirements_isaaclab4.1.txt](requirements_isaaclab4.1.txt)和[requirements_isaaclab4.2.txt](requirements_isaaclab4.2.txt)
++ 貌似isaacsim4.2往后可以用官方./isaaclab.sh -i rsl-rl直接安装了
 ***************
 ```shell
 pip install isaacsim-rl==4.2.0.2 isaacsim-replicator==4.2.0.2 isaacsim-extscache-physics==4.2.0.2 isaacsim-extscache-kit-sdk==4.2.0.2 isaacsim-extscache-kit==4.2.0.2 isaacsim-app==4.2.0.2 --extra-index-url https://pypi.nvidia.com
@@ -13,3 +14,5 @@ pip install isaacsim==4.2.0.2 --extra-index-url https://pypi.nvidia.com
 ./isaaclab.sh -p -m pip install -e {THIS_REPO_DIR}/rsl_rl # for project with rsl_rl source code
 # 更多其他组件貌似这个领域不太用得上了
 ```
+***************
+todo: 合并vlnce环境到isaac+ros2环境

@@ -11,6 +11,16 @@ from omni.isaac.lab.app import AppLauncher
 
 import cli_args
 
+import logging
+
+# 配置日志记录
+logging.basicConfig(
+    filename='test.log',  # 日志文件名
+    filemode='w',
+    level=logging.DEBUG,  # 日志级别
+    format='%(asctime)s - %(levelname)s - %(message)s',  # 日志格式
+)
+
 # add argparse arguments
 parser = argparse.ArgumentParser(description="This script demonstrates how to collect data from the matterport dataset.")
 parser.add_argument("--episode_index", default=0, type=int, help="Episode index.")
@@ -41,6 +51,7 @@ from omni.isaac.core.objects import VisualCuboid
 
 import gymnasium as gym
 from omni.isaac.lab.sensors.camera.utils import create_pointcloud_from_depth
+# from omni.isaac.core.utils.viewports import set_camera_view
 from omni.isaac.lab.markers.config import CUBOID_MARKER_CFG
 from omni.isaac.lab.markers import VisualizationMarkers
 import omni.isaac.lab.utils.math as math_utils
@@ -134,6 +145,7 @@ class Planner:
 
         # Reset the environment and apply zero velocity command
         obs, infos = self.env.reset()
+        # logging.info(f"env reset infos: {infos}")
 
         # Simulate physics
         start_it = 1
@@ -197,7 +209,7 @@ class Planner:
             # command_velocity = actual_velocity + correction
             # import ipdb; ipdb.set_trace()
             self.vel_command[0] = torch.tensor(correction, device=self.env.unwrapped.device)
-            self.vel_command[0] = torch.clamp(self.vel_command[0], min=0.0, max=0.5)
+            self.vel_command[0] = torch.clamp(self.vel_command[0], min=0.0, max=0.8)
 
             # target_yaw = self.compute_target_yaw(robot_pos_w, env_cfg.expert_path[min(self.expert_vel_idx+1, env_cfg.expert_path_length-1)])
             target_yaw = self.compute_target_yaw(env_cfg.expert_path[self.expert_vel_idx], env_cfg.expert_path[min(self.expert_vel_idx+1, env_cfg.expert_path_length-1)])
@@ -212,7 +224,7 @@ class Planner:
             self.vel_command[2] = torch.tensor(target_yaw_rate, device=self.env.unwrapped.device)
 
             # obs[0, 6:9] = self.vel_command
-            print("vel_command: ", self.vel_command)
+            logging.info(f"vel_command: {self.vel_command}")
             # self.env.update_command(self.vel_command)
             # import pdb; pdb.set_trace()
             # action = self.policy(obs)
@@ -222,7 +234,7 @@ class Planner:
             obs, _, done, infos = self.env.step(self.vel_command)
 
             if done:
-                print("Episode done!!!")
+                logging.info("Episode done!!!")
                 break
             
             elapsed_time = time.time() - start_t
@@ -230,7 +242,11 @@ class Planner:
             start_t = time.time()
             it += 1
             sim_t += planner_dt
-            self.expert_vel_idx = min(int(sim_t / self.traj_dt), env_cfg.expert_path_length - 1)
+            current_expert_idx = min(int(sim_t / self.traj_dt), env_cfg.expert_path_length - 1)
+            if self.expert_vel_idx != current_expert_idx:
+                logging.info(f'current expert_vel_idx {current_expert_idx}')
+                logging.info(f'current expert_path pos {current_expert_idx}')
+            self.expert_vel_idx = current_expert_idx
 
             if np.linalg.norm(robot_pos_w[:2] - env_cfg.expert_path[-1][:2]) < 0.5:
                 reached_goal = True
@@ -243,9 +259,9 @@ class Planner:
                 break
         
         # Print measurements
-        print("\n============================== Episode Measurements ==============================")
+        logging.info("\n============================== Episode Measurements ==============================")
         for key, value in infos["measurements"].items():
-            print(f"{key}: {value}")
+            logging.info(f"{key}: {value}")
 
 
 if __name__ == "__main__":
@@ -259,6 +275,8 @@ if __name__ == "__main__":
     with gzip.open(dataset_file_name, "rt") as f:
         deserialized = json.loads(f.read())
         episode = deserialized["episodes"][episode_idx]
+        logging.info(f"running episode: {episode}")
+
         if "go2" in args_cli.task:
             env_cfg.scene.robot.init_state.pos = (episode["start_position"][0], episode["start_position"][1], episode["start_position"][2]+0.4)
         elif "h1" in args_cli.task:
@@ -295,6 +313,7 @@ if __name__ == "__main__":
         env_cfg.expert_path = expert_locations
         env_cfg.expert_path_length = len(env_cfg.expert_path)
         env_cfg.expert_time = np.arange(env_cfg.expert_path_length)*1.0
+        logging.info('expert_path', env_cfg.expert_path)
     # scene_id = "1LXtFkjw3qL"
 
     udf_file = os.path.join(ASSETS_DIR, f"matterport_usd/{env_cfg.scene_id}/{env_cfg.scene_id}.usd")
@@ -303,8 +322,8 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"No USD file found in scene directory: {udf_file}")  
 
-    print("scene_id: ", env_cfg.scene_id)
-    print("robot_init_pos: ", env_cfg.scene.robot.init_state.pos)
+    logging.info("scene_id: ", env_cfg.scene_id)
+    logging.info("robot_init_pos: ", env_cfg.scene.robot.init_state.pos)
     
     # initialize environment and low-level policy
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode=None)
@@ -315,6 +334,7 @@ if __name__ == "__main__":
         env = RslRlVecEnvWrapper(env)
     
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
+    logging.info(f"agent_cfg: {agent_cfg}")
 
     log_root_path = os.path.join(os.path.dirname(__file__),"../logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)

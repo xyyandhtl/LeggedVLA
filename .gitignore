@@ -47,8 +47,8 @@ dmypy.json
 .vscode/
 
 # PyCharm
-#.idea/
-#*.iml
+.idea/
+*.iml
 
 # macOS
 .DS_Store
@@ -88,6 +88,7 @@ docker-compose.override.yml
 *.mp4
 
 # Ignore specific folders
+outputs/
 logs/
 
 deploy_ros2/build
@@ -97,3 +98,5 @@ deploy_ros2/log
 training_vla/NavRL/third_party
 training_vla/NavRL/outputs
 training_vla/NavRL/wandb
+
+env_isaaclab/isaac_vlnce/isaaclab_exts/omni.isaac.vlnce/assets
