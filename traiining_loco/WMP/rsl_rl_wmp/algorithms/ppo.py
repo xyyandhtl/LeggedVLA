@@ -32,8 +32,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from rsl_rl.modules import ActorCritic
-from rsl_rl.storage import RolloutStorage
+from rsl_rl_wmp.modules import ActorCritic
+from rsl_rl_wmp.storage import RolloutStorage
 
 class PPO:
     actor_critic: ActorCritic

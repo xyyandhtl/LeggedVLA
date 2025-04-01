@@ -53,7 +53,7 @@ from legged_gym.utils.terrain import Terrain
 from legged_gym.utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqrt_float
 from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config import LeggedRobotCfg
-from rsl_rl.datasets.motion_loader import AMPLoader
+from rsl_rl_wmp.datasets.motion_loader import AMPLoader
 import cv2
 
 COM_OFFSET = torch.tensor([0.012731, 0.002186, 0.000515])

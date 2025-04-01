@@ -40,13 +40,13 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import torch
 
-from rsl_rl.algorithms import AMPPPO, PPO
-from rsl_rl.modules import ActorCritic, ActorCriticWMP, ActorCriticRecurrent
-from rsl_rl.env import VecEnv
-from rsl_rl.algorithms.amp_discriminator import AMPDiscriminator
-from rsl_rl.datasets.motion_loader import AMPLoader
-from rsl_rl.utils.utils import Normalizer
-from rsl_rl.modules import DepthPredictor
+from rsl_rl_wmp.algorithms import AMPPPO, PPO
+from rsl_rl_wmp.modules import ActorCritic, ActorCriticWMP, ActorCriticRecurrent
+from rsl_rl_wmp.env import VecEnv
+from rsl_rl_wmp.algorithms.amp_discriminator import AMPDiscriminator
+from rsl_rl_wmp.datasets.motion_loader import AMPLoader
+from rsl_rl_wmp.utils.utils import Normalizer
+from rsl_rl_wmp.modules import DepthPredictor
 import torch.optim as optim
 
 from dreamer.models import *

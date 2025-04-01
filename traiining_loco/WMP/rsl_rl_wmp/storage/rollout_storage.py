@@ -34,7 +34,7 @@
 import torch
 import numpy as np
 
-from rsl_rl.utils import split_and_pad_trajectories
+from rsl_rl_wmp.utils import split_and_pad_trajectories
 
 class RolloutStorage:
     class Transition:
