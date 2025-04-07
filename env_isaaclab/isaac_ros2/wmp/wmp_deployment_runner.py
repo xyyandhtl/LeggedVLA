@@ -11,12 +11,10 @@ from dreamer.models import *
 import ruamel.yaml as yaml
 import argparse
 from pathlib import Path
-import sys
-import collections
 from dreamer import tools
 
 
-class WMPRunner:
+class WMPDeploymentRunner:
 
     def __init__(self,
                  train_cfg,
@@ -31,25 +29,23 @@ class WMPRunner:
         self.device = device
         self.history_length = history_length
 
-        num_critic_obs = 285
-        num_actor_obs = 285 # would only use part of it
-        privileged_dim = 53
-        height_dim = 187
-        num_actions = 12
-        num_envs = 1
-        step_dt = 0.02
-        use_camera = True
-        depth_resized = (64, 64)
-        update_interval = 5
-        self.num_critic_obs, self.num_actor_obs, self.privileged_dim, self.height_dim, self.num_actions, self.num_envs, self.step_dt, self.use_camera, self.depth_resized, self.update_interval = \
-            num_critic_obs, num_actor_obs, privileged_dim, height_dim, num_actions, num_envs, step_dt, use_camera, depth_resized, update_interval
+        self.num_critic_obs = 285
+        self.num_actor_obs = 285 # would only use part of it
+        self.privileged_dim = 53
+        self.height_dim = 187
+        self.num_actions = 12
+        self.num_envs = 1
+        self.step_dt = 0.02
+        self.use_camera = True
+        self.depth_resized = (64, 64)
+        self.update_interval = 5
 
         # build world model
         # self._build_world_model()
         # world model
         print('Begin construct world model')
         configs = yaml.safe_load(
-            (Path(__file__).resolve().parent.parent.parent.parent / "training_loco/WMP/dreamer/configs.yaml").read_text()
+            (Path(__file__).resolve().parent / "dreamer/configs.yaml").read_text()
         )
         def recursive_update(base, update):
             for key, value in update.items():
@@ -74,12 +70,12 @@ class WMPRunner:
         # allow world model and rl env on different device
         if (self.wm_config.wm_device != 'None'):
             self.wm_config.device = self.wm_config.wm_device
-        self.wm_config.num_actions = self.wm_config.num_actions * update_interval
-        self.prop_dim = num_actor_obs - privileged_dim - height_dim - num_actions
-        image_shape = depth_resized + (1,)
+        self.wm_config.num_actions = self.wm_config.num_actions * self.update_interval
+        self.prop_dim = self.num_actor_obs - self.privileged_dim - self.height_dim - self.num_actions   # 33
+        image_shape = self.depth_resized + (1,)
         obs_shape = {'prop': (self.prop_dim,), 'image': image_shape, }
 
-        self._world_model = WorldModel(self.wm_config, obs_shape, use_camera=use_camera)
+        self._world_model = WorldModel(self.wm_config, obs_shape, use_camera=self.use_camera)
         self._world_model = self._world_model.to(self._world_model.device)
         print('Finish construct world model')
         self.wm_feature_dim = self.wm_config.dyn_deter  # + self.wm_config.dyn_stoch * self.wm_config.dyn_discrete
@@ -89,18 +85,19 @@ class WMPRunner:
         self.depth_predictor_opt = optim.Adam(self.depth_predictor.parameters(), lr=self.depth_predictor_cfg["lr"],
                                               weight_decay=self.depth_predictor_cfg["weight_decay"])
 
-        self.history_dim = history_length * (num_actor_obs - privileged_dim - height_dim - 3) # =42,exclude command
-        actor_critic = ActorCriticWMP(num_actor_obs=num_actor_obs,
-                                          num_critic_obs=num_critic_obs,
-                                          num_actions=num_actions,
-                                          height_dim=height_dim,
-                                          privileged_dim=privileged_dim,
+        self.history_dim = history_length * (self.num_actor_obs - self.privileged_dim - self.height_dim - 3) # =42,exclude command
+        actor_critic = ActorCriticWMP(num_actor_obs=self.num_actor_obs,
+                                          num_critic_obs=self.num_critic_obs,
+                                          num_actions=self.num_actions,
+                                          height_dim=self.height_dim,
+                                          privileged_dim=self.privileged_dim,
                                           history_dim=self.history_dim,
                                           wm_feature_dim=self.wm_feature_dim,
                                           **self.policy_cfg).to(self.device)
 
+        print({f'wmp motion files {self.cfg["amp_motion_files"]}'})
         amp_data = AMPLoader(
-            device, time_between_frames=step_dt, preload_transitions=True,
+            device, time_between_frames=self.step_dt, preload_transitions=True,
             num_preload_transitions=train_cfg['runner']['amp_num_preload_transitions'],
             motion_files=self.cfg["amp_motion_files"])
         amp_normalizer = Normalizer(amp_data.observation_dim)
@@ -111,7 +108,7 @@ class WMPRunner:
             train_cfg['runner']['amp_task_reward_lerp']).to(self.device)
 
         # self.discr: AMPDiscriminator = AMPDiscriminator()
-        alg_class = eval(self.cfg["algorithm_class_name"])  # PPO
+        alg_class = eval(self.cfg["algorithm_class_name"])  # AMPPPO
         min_std = (torch.tensor([0.0864, 0.0801, 0.0974, 0.0864, 0.0801, 0.0974, 0.0864, 0.0801, 0.0974,
                     0.0864, 0.0801, 0.0974], device=self.device))
         self.alg: PPO = alg_class(actor_critic, discriminator, amp_data, amp_normalizer, device=self.device,
@@ -120,8 +117,8 @@ class WMPRunner:
         self.save_interval = self.cfg["save_interval"]
 
         # init storage and model
-        self.alg.init_storage(num_envs, self.num_steps_per_env, [num_actor_obs],
-                              [num_critic_obs], [num_actions], self.history_dim, self.wm_feature_dim)
+        self.alg.init_storage(self.num_envs, self.num_steps_per_env, [self.num_actor_obs],
+                              [self.num_critic_obs], [self.num_actions], self.history_dim, self.wm_feature_dim)
 
         # Log
         # self.log_dir = log_dir

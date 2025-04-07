@@ -5,6 +5,8 @@ import rclpy
 import torch
 import time
 import math
+import numpy as np
+import cv2
 
 FILE_PATH = os.path.join(os.path.dirname(__file__), "cfg")
 @hydra.main(config_path=FILE_PATH, config_name="sim", version_base=None)
@@ -23,7 +25,19 @@ def run_simulator(cfg):
     import env.matterport3d_env as matterport3d_env
     import go2.go2_sensors as go2_sensors
 
-    init_pos = (0, 0, 0)
+    from wmp.wmp_policy import WMPPolicy
+
+    # Go2 Environment setup
+    go2_env_cfg = Go2RSLEnvCfg()
+    go2_env_cfg.scene.num_envs = cfg.num_envs
+    go2_env_cfg.decimation = math.ceil(1. / go2_env_cfg.sim.dt / cfg.freq)
+    print(f'sim.dt {go2_env_cfg.sim.dt}')
+    print(f'decimation {go2_env_cfg.decimation}')
+    go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
+    go2_ctrl.init_base_vel_cmd(cfg.num_envs)
+    env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
+    # env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
+
     # Simulation environment
     if (cfg.env_name == "obstacle-dense"):
         sim_env.create_obstacle_dense_env() # obstacles dense
@@ -46,14 +60,8 @@ def run_simulator(cfg):
     elif (cfg.env_name == "matterport3d"):
         matterport3d_env.create_matterport3d_env(cfg.episode_idx) # matterport3d
 
-    # Go2 Environment setup
-    go2_env_cfg = Go2RSLEnvCfg()
-    go2_env_cfg.scene.num_envs = cfg.num_envs
-    go2_env_cfg.decimation = math.ceil(1. / go2_env_cfg.sim.dt / cfg.freq)
-    go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
-    go2_ctrl.init_base_vel_cmd(cfg.num_envs)
-    env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
-    # env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
+
+    wmp_policy = WMPPolicy()
 
     # Sensor setup
     sm = go2_sensors.SensorManager(cfg.num_envs)
@@ -72,15 +80,44 @@ def run_simulator(cfg):
     # Run simulation
     sim_step_dt = float(go2_env_cfg.sim.dt * go2_env_cfg.decimation)
     obs, _ = env.reset()
+    obs_list = obs.cpu().numpy().tolist()[0]
+    obs_list = ["{:.2f}".format(v) for v in obs_list]
+    print(f'init obs: {obs_list}')
+
     while simulation_app.is_running():
         start_time = time.time()
         with torch.inference_mode():            
             # control joints
-            actions = policy(obs)
-            # print(f'[{start_time}] actions: {actions}')
+            # actions = policy(obs)
+
+            wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
+            actions = wmp_policy.inference_action(wmp_obs)
+
+            obs_list = obs.cpu().numpy().tolist()[0]
+            obs_list = ["{:.2f}".format(v) for v in obs_list]
+            print(f'obs: {obs_list}')
+            print(f'[{start_time}] actions: {actions}')
 
             # step the environment
             obs, _, _, _ = env.step(actions)
+            depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
+
+            # if wmp_policy.global_counter % wmp_policy.wm_update_interval == 0:
+            # for i, camera in enumerate(cameras):
+            #     depth = camera.get_depth()
+            #     if depth is not None:
+            #
+            #         depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
+            #         depth = -(depth / 2 - 0.5)
+            #         depth[(depth < -0.5) | (depth > 0.5)] = 0.5
+            #         depth = np.flipud(depth)
+            #
+            #         cv2.imwrite(f'./logs/depth_{wmp_policy.global_counter}.png', depth + 0.5)
+            #         # print(f'depth {depth}')
+            #         depth_tensor[i] = torch.from_numpy(depth.copy())
+
+            wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
+            wmp_policy.update_wm(actions, wmp_obs, depth_tensor)
 
             # # ROS2 data
             dm.pub_ros2_data()

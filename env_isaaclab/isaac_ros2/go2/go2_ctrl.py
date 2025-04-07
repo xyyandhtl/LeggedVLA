@@ -14,6 +14,7 @@ base_vel_cmd_input = None
 def init_base_vel_cmd(num_envs):
     global base_vel_cmd_input
     base_vel_cmd_input = torch.zeros((num_envs, 3), dtype=torch.float32)
+    # base_vel_cmd_input[0] = torch.tensor([0.8, 0, 0], dtype=torch.float32)
 
 # Modify base_vel_cmd to use the tensor directly
 def base_vel_cmd(env: ManagerBasedEnv) -> torch.Tensor:
@@ -60,11 +61,13 @@ def sub_keyboard_event(event) -> bool:
         # Reset commands to zero on key release
         elif event.type == carb.input.KeyboardEventType.KEY_RELEASE:
             base_vel_cmd_input.zero_()
+            # base_vel_cmd_input[0] = torch.tensor([0.8, 0, 0], dtype=torch.float32)
     return True
 
 def get_rsl_flat_policy(cfg):
     cfg.observations.policy.height_scan = None
     env = gym.make("Isaac-Velocity-Flat-Unitree-Go2-v0", cfg=cfg)
+    # env = gym.make("Isaac-Velocity-Flat-Unitree-A1-v0", cfg=cfg)
     env = RslRlVecEnvWrapper(env)
 
     # Low level control: rsl control policy

@@ -42,3 +42,24 @@ class SensorManager:
             camera.set_focal_length(1.5)
             cameras.append(camera)
         return cameras
+
+    def add_camera_wmp(self, freq):
+        resolution_size = 64
+        horizontal_fov = 58.0  # 58 degrees
+        # focal_length_pixel = (resolution_size / 2) / np.tan(np.radians(horizontal_fov) / 2)
+        cameras = []
+        for env_idx in range(self.num_envs):
+            camera = Camera(
+                prim_path=f"/World/envs/env_{env_idx}/Go2/base/front_cam",
+                translation=np.array([0.32, 0.0, 0.03]),
+                frequency=freq,
+                resolution=(resolution_size, resolution_size),
+                orientation=rot_utils.euler_angles_to_quats(np.array([0, 0, 0]), degrees=True),
+            )
+            camera.initialize()
+            focal_length_sim = camera.get_horizontal_aperture() / 2 / np.tan(np.radians(horizontal_fov) / 2)
+            camera.set_focal_length(focal_length_sim)
+            print(f'camera fov {np.degrees(camera.get_horizontal_fov())} degrees')
+            camera.add_distance_to_image_plane_to_frame()
+            cameras.append(camera)
+        return cameras

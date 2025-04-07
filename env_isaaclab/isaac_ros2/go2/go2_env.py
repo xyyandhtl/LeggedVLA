@@ -20,11 +20,11 @@ import go2.go2_ctrl as go2_ctrl
 class Go2SimCfg(InteractiveSceneCfg):
     init_pos = (0, 0, 0)    # mp3d scene search log: mp3d episode init_pos, replace it
     # ground plane
-    # ground = AssetBaseCfg(prim_path="/World/ground",
-    #                       spawn=sim_utils.GroundPlaneCfg(color=(0.1, 0.1, 0.1), size=(300., 300.)),
-    #                       init_state=AssetBaseCfg.InitialStateCfg(
-    #                           pos=(0, 0, 1e-4)
-    #                       ))
+    ground = AssetBaseCfg(prim_path="/World/ground",
+                          spawn=sim_utils.GroundPlaneCfg(color=(0.1, 0.1, 0.1), size=(300., 300.)),
+                          init_state=AssetBaseCfg.InitialStateCfg(
+                              pos=(0, 0, 1e-4)
+                          ))
     
     # Lights
     light = AssetBaseCfg(
@@ -47,7 +47,7 @@ class Go2SimCfg(InteractiveSceneCfg):
     unitree_go2: ArticulationCfg = UNITREE_GO2_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Go2",
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(init_pos[0], init_pos[1], init_pos[2] + 0.4),
+            pos=(init_pos[0] - 4, init_pos[1], init_pos[2] + 0.40),
             joint_pos={
                 ".*L_hip_joint": 0.1,
                 ".*R_hip_joint": -0.1,
@@ -69,8 +69,8 @@ class Go2SimCfg(InteractiveSceneCfg):
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
         debug_vis=False,
-        mesh_prim_paths=["/World/Mp3d/mesh"],
-        # mesh_prim_paths=["/World/ground"],
+        # mesh_prim_paths=["/World/Mp3d/mesh"],
+        mesh_prim_paths=["/World/ground"],
     )
     del init_pos
 
@@ -170,14 +170,14 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         # viewer settings
-        self.viewer.eye = [-1.2, 0.0, 0.5]
+        self.viewer.eye = [-2, 0.0, 0.8]
         self.viewer.lookat = [0.0, 0.0, 0.0]
 
         # step settings
         self.decimation = 8  # step
 
         # simulation settings
-        self.sim.dt = 0.005  # sim step every 
+        self.sim.dt = 0.005  #  0.005  # sim step every
         self.sim.render_interval = self.decimation  
         self.sim.disable_contact_processing = True
         self.sim.render.antialiasing_mode = None
@@ -187,6 +187,8 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 20.0 # can be ignored
         self.is_finite_horizon = False
         self.actions.joint_pos.scale = 0.25
+        # self.actions.joint_pos.scale = 0.5
+        # self.observations.policy.joint_vel.scale
 
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
@@ -200,6 +202,6 @@ def camera_follow(env):
         yaw = rotation.as_euler('zyx')[0]
         yaw_rotation = R.from_euler('z', yaw).as_matrix()
         set_camera_view(
-            yaw_rotation.dot(np.asarray([-1.2, 0.0, 0.5])) + robot_position,
+            yaw_rotation.dot(np.asarray([-2, 0.0, 0.8])) + robot_position,
             robot_position
         )

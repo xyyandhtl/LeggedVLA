@@ -1,3 +1,3 @@
 Legged VLA Integration
 
-- For learning recordings, also intend to develop a higher-level VLA and a lower-level locomotion integration framework for training and employment
+- Primarily for learning, while also intend to create an easily deployable pipeline for training and deploying higher-level VLA and lower-level locomotion.
