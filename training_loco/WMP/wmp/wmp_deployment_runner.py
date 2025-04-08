@@ -45,7 +45,7 @@ class WMPDeploymentRunner:
         # world model
         print('Begin construct world model')
         configs = yaml.safe_load(
-            (Path(__file__).resolve().parent / "dreamer/configs.yaml").read_text()
+            (Path(__file__).resolve().parent.parent / "dreamer/configs.yaml").read_text()
         )
         def recursive_update(base, update):
             for key, value in update.items():

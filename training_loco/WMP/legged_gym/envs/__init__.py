@@ -35,6 +35,7 @@ from .a1.a1_config import A1RoughCfg, A1RoughCfgPPO
 from .a1.a1_amp_config import A1AMPCfg, A1AMPCfgPPO
 from .aliengo.aliengo_config import AlienGoRoughCfg, AlienGoRoughCfgPPO
 from .aliengo.aliengo_amp_config import AlienGoAMPCfg, AlienGoAMPCfgPPO
+from .go2.go2_amp_config import Go2AMPCfg, Go2AMPCfgPPO
 
 
 import os
@@ -45,3 +46,4 @@ task_registry.register( "a1", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO() )
 task_registry.register( "a1_amp", LeggedRobot, A1AMPCfg(), A1AMPCfgPPO() )
 task_registry.register( "aliengo", LeggedRobot, AlienGoRoughCfg(), AlienGoRoughCfgPPO() )
 task_registry.register( "aliengo_amp", LeggedRobot, AlienGoAMPCfg(), AlienGoAMPCfgPPO() )
+task_registry.register( "go2_amp", LeggedRobot, Go2AMPCfg(), Go2AMPCfgPPO() )

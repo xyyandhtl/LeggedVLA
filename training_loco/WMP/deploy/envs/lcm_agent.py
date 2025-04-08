@@ -4,9 +4,8 @@ import lcm
 import numpy as np
 import torch
 import cv2
-import sys
-sys.path.append("/home/nano/walk-these-ways/")
-from go1_gym_deploy.lcm_types.pd_tau_targets_lcmt import pd_tau_targets_lcmt
+
+from deploy.lcm_types.pd_tau_targets_lcmt import pd_tau_targets_lcmt
 
 lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=255")
 

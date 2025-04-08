@@ -3,8 +3,8 @@ from pathlib import Path
 LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent.parent / 'training_loco/WMP')
 sys.path.append(LEGGED_GYM_ROOT_DIR)
 
-import torch
 import numpy as np
+import torch
 import os
 
 # from legged_gym.envs import LEGGED_GYM_ROOT_DIR
@@ -67,7 +67,8 @@ class WMPPolicy:
 
         # load policy
         train_cfg.runner.resume = True
-        train_cfg.runner.load_run = 'a1'
+        train_cfg.runner.load_run = 'aliengo'
+        # train_cfg.runner.load_run = 'go2'
 
         train_cfg.runner.checkpoint = -1    # 9000
         train_cfg_dict = class_to_dict(train_cfg)
@@ -83,11 +84,17 @@ class WMPPolicy:
 
         # self.env = env
         # self.logger = Logger(0.02)
-        self.num_critic_obs, self.num_actor_obs, self.privileged_dim, self.height_dim, self.num_actions, \
-            self.num_envs, self.step_dt, self.use_camera, self.depth_resized, self.update_interval = \
-            self.runner.num_critic_obs, self.runner.num_actor_obs, self.runner.privileged_dim, self.runner.height_dim, \
-            self.runner.num_actions, self.runner.num_envs, self.runner.step_dt, self.runner.use_camera, \
-            self.runner.depth_resized, self.runner.update_interval
+        self.num_critic_obs = self.runner.num_critic_obs
+        self.num_actor_obs = self.runner.num_actor_obs
+        self.privileged_dim = self.runner.privileged_dim
+        self.height_dim = self.runner.height_dim
+        self.num_actions = self.runner.num_actions
+        self.num_envs = self.runner.num_envs
+        self.step_dt = self.runner.step_dt
+        self.use_camera = self.runner.use_camera
+        self.depth_resized = self.runner.depth_resized
+        self.update_interval = self.runner.update_interval
+
         self.prop_dim = self.runner.prop_dim
         self.device = self.device
 
@@ -114,7 +121,7 @@ class WMPPolicy:
         # self.total_reward = 0
         # self.not_dones = torch.ones((self.num_envs,), device=self.device)
 
-        self.global_counter = 0
+        self.global_counter = 1
         self.infos = {}
 
     def init_wmp_policy(self, obs):
@@ -139,10 +146,8 @@ class WMPPolicy:
     def update_wm(self, actions, obs, depth, reset_env_ids=None):
         if self.global_counter % self.wm_update_interval == 0:
             if self.use_camera:
-                # self.wm_obs["image"][0] = depth.unsqueeze(-1).to(self.world_model.device)
-                depth = np.ones(self.depth_resized) * 0.5
-                depth_tesnor = torch.from_numpy(depth).unsqueeze(-1).to(self.world_model.device)
-                self.wm_obs["image"][0] = depth_tesnor
+                # depth = torch.from_numpy(np.ones(self.depth_resized) * 0.5)   # for depth-zero input test
+                self.wm_obs["image"][0] = depth.unsqueeze(-1).to(self.world_model.device)
                 # print(f'depth {depth}')
 
             wm_embed = self.world_model.encoder(self.wm_obs)
@@ -150,7 +155,6 @@ class WMPPolicy:
                                                          sample=True)
             self.wm_feature = self.world_model.dynamics.get_deter_feat(self.wm_latent)
             self.wm_is_first[:] = 0
-
         # obs, _, rews, dones, infos, reset_env_ids, _ = env.step(actions.detach())
 
         # update world model input
@@ -210,8 +214,23 @@ class WMPPolicy:
         wmp_obs[:, self.privileged_dim:self.privileged_dim + self.prop_dim + self.num_actions] = lab_obs[:, 3:]
         wmp_obs[:, self.privileged_dim:self.privileged_dim + 3] *= 0.25                 # WMP normalization
         wmp_obs[:, self.privileged_dim + 21:self.privileged_dim + self.prop_dim] *= 0.05    # WMP normalization
-        # wmp_obs[:, self.privileged_dim + self.prop_dim:self.privileged_dim + self.prop_dim + self.num_actions] *= 4.0    # WMP normalization
-        # wmp_obs[:, self.privileged_dim + 9:self.privileged_dim + 21] *= 0.25    # WMP normalization
+        return wmp_obs
+
+    def obs_convert_from_wtw_env(self, control_obs):
+        wmp_obs = torch.zeros(size=(self.num_envs, self.num_actor_obs), device=self.device)
+
+        # observe_vel False
+        # # gravity and command
+        # wmp_obs[:, self.privileged_dim + 3:self.privileged_dim + 9] = control_obs['obs'][:6]
+        # # dof_pos, dof_vel and actions
+        # wmp_obs[:, self.privileged_dim + 9:self.privileged_dim + 45] = control_obs['obs'][18:54]
+
+        # set walk-these-ways' observe_vel True to get ang_vel needed by WMP
+        wmp_obs[:, self.privileged_dim:self.privileged_dim + 3] = control_obs['obs'][3:6]
+        # gravity and command
+        wmp_obs[:, self.privileged_dim + 3:self.privileged_dim + 9] = control_obs['obs'][6:12]
+        # dof_pos, dof_vel and actions
+        wmp_obs[:, self.privileged_dim + 9:self.privileged_dim + 45] = control_obs['obs'][24:60]
         return wmp_obs
 
 

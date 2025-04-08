@@ -4,13 +4,12 @@ import threading
 import time
 
 import numpy as np
-import sys
-sys.path.append("/home/nano/walk-these-ways/")
-from go1_gym_deploy.lcm_types.leg_control_data_lcmt import leg_control_data_lcmt
-from go1_gym_deploy.lcm_types.rc_command_lcmt import rc_command_lcmt
-from go1_gym_deploy.lcm_types.state_estimator_lcmt import state_estimator_lcmt
-from go1_gym_deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
-from go1_gym_deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
+
+from deploy.lcm_types.leg_control_data_lcmt import leg_control_data_lcmt
+from deploy.lcm_types.rc_command_lcmt import rc_command_lcmt
+from deploy.lcm_types.state_estimator_lcmt import state_estimator_lcmt
+from deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
+from deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
 
 
 def get_rpy_from_quaternion(q):

@@ -1,0 +1,87 @@
+{
+  "env": {
+    "num_envs": 4000,
+    "num_observations": 70,
+    "num_scalar_observations": 70,
+    "num_privileged_obs": 2,
+    "privileged_future_horizon": 1,
+    "num_actions": 12,
+    "num_observation_history": 30,
+    "env_spacing": 3.0,
+    "send_timeouts": true,
+    "episode_length_s": 20,
+    "observe_vel": true,
+    "observe_only_ang_vel": false,
+    "observe_only_lin_vel": false,
+    "observe_yaw": false,
+    "observe_contact_states": false,
+    "observe_command": true,
+    "observe_height_command": false,
+    "observe_gait_commands": true,
+    "observe_timing_parameter": false,
+    "observe_clock_inputs": true,
+    "observe_two_prev_actions": true,
+    "observe_imu": false
+  },
+  "commands": {
+    "num_commands": 15,
+    "pacing_offset": false
+  },
+  "init_state": {
+    "default_joint_angles": {
+      "FL_hip_joint": 0.0,
+      "RL_hip_joint": 0.0,
+      "FR_hip_joint": -0.0,
+      "RR_hip_joint": -0.0,
+      "FL_thigh_joint": 0.8,
+      "RL_thigh_joint": 0.8,
+      "FR_thigh_joint": 0.8,
+      "RR_thigh_joint": 0.8,
+      "FL_calf_joint": -1.5,
+      "RL_calf_joint": -1.5,
+      "FR_calf_joint": -1.5,
+      "RR_calf_joint": -1.5
+    }
+  },
+  "control": {
+    "control_type": "actuator_net",
+    "stiffness": {
+      "joint": 20.0
+    },
+    "damping": {
+      "joint": 0.5
+    },
+    "action_scale": 0.25,
+    "hip_scale_reduction": 1.0,
+    "decimation": 4
+  },
+  "normalization": {
+    "clip_observations": 100.0,
+    "clip_actions": 6.0
+  },
+  "obs_scales": {
+    "lin_vel": 1.0,
+    "ang_vel": 0.25,
+    "dof_pos": 1.0,
+    "dof_vel": 0.05,
+    "imu": 0.1,
+    "height_measurements": 5.0,
+    "friction_measurements": 1.0,
+    "body_height_cmd": 2.0,
+    "gait_phase_cmd": 1.0,
+    "gait_freq_cmd": 1.0,
+    "footswing_height_cmd": 0.15,
+    "body_pitch_cmd": 0.3,
+    "body_roll_cmd": 0.3,
+    "aux_reward_cmd": 1.0,
+    "compliance_cmd": 1.0,
+    "stance_width_cmd": 1.0,
+    "stance_length_cmd": 1.0,
+    "segmentation_image": 1.0,
+    "rgb_image": 1.0,
+    "depth_image": 1.0
+  },
+  "sim": {
+    "dt": 0.005
+  }
+}

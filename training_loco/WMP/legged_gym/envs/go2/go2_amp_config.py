@@ -1,12 +1,13 @@
 import glob
-from pathlib import Path
 
-MOTION_FILES = glob.glob(str(Path(__file__).resolve().parent.parent / 'mocap_motions/*'))
+from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
+
+MOTION_FILES = glob.glob('datasets/mocap_motions/*')
 
 
-class AlienGoAMPCfg():
-    class env:
-        num_envs = 4096   # 512
+class Go2AMPCfg(LeggedRobotCfg):
+    class env(LeggedRobotCfg.env):
+        num_envs = 4096
         include_history_steps = None  # Number of steps of history to include.
         prop_dim = 33 # proprioception
         action_dim = 12
@@ -45,8 +46,8 @@ class AlienGoAMPCfg():
         selected = False  # select a unique terrain type and pass all arguments
         terrain_kwargs = None  # Dict of arguments for selected terrain
         max_init_terrain_level = 0  # starting curriculum state
-        terrain_length = 10.
-        terrain_width = 10.
+        terrain_length = 8.
+        terrain_width = 8.
         num_rows = 10  # number of terrain rows (levels)
         num_cols = 20  # number of terrain cols (types)
         # terrain types: [wave, rough slope, stairs up, stairs down, discrete, gap, pit, tilt, crawl, rough_flat]
@@ -54,23 +55,23 @@ class AlienGoAMPCfg():
         # trimesh only:
         slope_treshold = 0.75  # slopes above this threshold will be corrected to vertical surfaces
 
-    class init_state:
-        pos = [0.0, 0.0, 0.55]  # x,y,z [m]
+    class init_state(LeggedRobotCfg.init_state):
+        pos = [0.0, 0.0, 0.5]  # x,y,z [m]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.0,   # [rad]
-            'RL_hip_joint': 0.0,   # [rad]
-            'FR_hip_joint': 0.0 ,  # [rad]
-            'RR_hip_joint': 0.0,   # [rad]
+            'FL_hip_joint': 0.1,  # [rad]
+            'RL_hip_joint': 0.1,  # [rad]
+            'FR_hip_joint': -0.1,  # [rad]
+            'RR_hip_joint': -0.1,  # [rad]
 
-            'FL_thigh_joint': 0.8,     # [rad]
-            'RL_thigh_joint': 0.8,   # [rad]
-            'FR_thigh_joint': 0.8,     # [rad]
-            'RR_thigh_joint': 0.8,   # [rad]
+            'FL_thigh_joint': 0.7,  # [rad]
+            'RL_thigh_joint': 1.0,  # [rad]
+            'FR_thigh_joint': 0.7,  # [rad]
+            'RR_thigh_joint': 1.0,  # [rad]
 
-            'FL_calf_joint': -1.5,   # [rad]
-            'RL_calf_joint': -1.5,    # [rad]
+            'FL_calf_joint': -1.5,  # [rad]
+            'RL_calf_joint': -1.5,  # [rad]
             'FR_calf_joint': -1.5,  # [rad]
-            'RR_calf_joint': -1.5,    # [rad]
+            'RR_calf_joint': -1.5,  # [rad]
         }
 
     class sim:
@@ -92,11 +93,11 @@ class AlienGoAMPCfg():
             default_buffer_size_multiplier = 5
             contact_collection = 2  # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
 
-    class control:
+    class control(LeggedRobotCfg.control):
         # PD Drive parameters:
         control_type = 'P'
         stiffness = {'joint': 40.}  # [N*m/rad]
-        damping = {'joint': 2.0}  # [N*m*s/rad]
+        damping = {'joint': 1.0}  # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
@@ -105,7 +106,7 @@ class AlienGoAMPCfg():
 
     class depth:
         use_camera = True
-        camera_num_envs = 1024    # 128
+        camera_num_envs = 1024
         camera_terrain_num_rows = 10
         camera_terrain_num_cols = 20
 
@@ -128,8 +129,8 @@ class AlienGoAMPCfg():
         scale = 1
         invert = True
 
-    class asset:
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/aliengo/urdf/aliengo.urdf'
+    class asset(LeggedRobotCfg.asset):
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf'
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
         # terminate_after_contacts_on = [
@@ -183,7 +184,7 @@ class AlienGoAMPCfg():
         clip_observations = 100.
         clip_actions = 6.0
 
-        base_height = 0.3 # base height of AlienGo, used to normalize measured height
+        base_height = 0.3 # base height of Go2, used to normalize measured height
 
 
     class noise:
@@ -198,28 +199,27 @@ class AlienGoAMPCfg():
             gravity = 0.05
             height_measurements = 0  # only for critic
 
-    class rewards:
+    class rewards(LeggedRobotCfg.rewards):
         reward_curriculum = True
         reward_curriculum_term = ["feet_edge"]
         reward_curriculum_schedule = [[4000, 10000, 0.1, 1.0]]
-        # reward_curriculum_schedule = [[3000, 4000, 0.1, 1.0]]
 
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.30
+        base_height_target = 0.25
         foot_height_target = 0.15
         tracking_sigma = 0.15  # tracking reward = exp(-error^2/sigma)
         lin_vel_clip = 0.1
 
-        class scales:
+        class scales(LeggedRobotCfg.rewards.scales):
             tracking_lin_vel = 1.5
             tracking_ang_vel = 0.5
-            torques = -0.00003
+            torques = -0.00008
             dof_acc = -2.5e-7
             base_height = -0.
             feet_air_time = 0.5
             collision = -1.0
             feet_stumble = -0.1
-            action_rate = -0.02
+            action_rate = -0.03
 
             feet_edge = -1.0
             dof_error = -0.04
@@ -256,7 +256,7 @@ class AlienGoAMPCfg():
             flat_heading = [-3.14 / 4, 3.14 / 4]
 
 
-class AlienGoAMPCfgPPO:
+class Go2AMPCfgPPO(LeggedRobotCfgPPO):
     runner_class_name = 'WMPRunner'
 
     class policy:
@@ -273,18 +273,16 @@ class AlienGoAMPCfgPPO:
         # rnn_hidden_size = 512
         # rnn_num_layers = 1
 
-    class algorithm:
+    class algorithm(LeggedRobotCfgPPO.algorithm):
         entropy_coef = 0.01
         vel_predict_coef = 1.0
         amp_replay_buffer_size = 1000000
         num_learning_epochs = 5
         num_mini_batches = 4
 
-    class runner:
-        num_steps_per_env = 24  # per iteration
-
+    class runner(LeggedRobotCfgPPO.runner):
         run_name = 'flat_push1'
-        experiment_name = 'aliengo_amp_example'
+        experiment_name = 'go2_amp_example'
         algorithm_class_name = 'AMPPPO'
         policy_class_name = 'ActorCritic'
         max_iterations = 20000  # number of policy updates
@@ -302,7 +300,7 @@ class AlienGoAMPCfgPPO:
         lr = 3e-4
         weight_decay = 1e-4
         training_interval = 10
-        training_iters = 1000  # 1000, 120
-        batch_size = 1024      # 1024, 128
+        training_iters = 1000
+        batch_size = 1024
         loss_scale = 100
 

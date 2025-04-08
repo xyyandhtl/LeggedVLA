@@ -6,8 +6,8 @@ import select
 import numpy as np
 import sys
 sys.path.append("/home/nano/walk-these-ways")
-from go1_gym_deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
-from go1_gym_deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
+from deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
+from deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
 from realsense import Go1RealSense
 
 

@@ -308,13 +308,14 @@ class LeggedRobot(BaseTask):
         self.last_torques[:] = self.torques[:]
         self.last_root_vel[:] = self.root_states[:, 7:13]
 
-        # if self.viewer and self.enable_viewer_sync and self.debug_viz:
-        #     # self._draw_debug_vis()
-        #     if self.cfg.depth.use_camera:
-        #         window_name = "Depth Image"
-        #         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        #         cv2.imshow("Depth Image", self.depth_buffer[self.lookat_id, -1].cpu().numpy() + 0.5)
-        #         cv2.waitKey(1)
+        # print(f'depth buffer {self.depth_buffer[0, -1]}')
+        if self.viewer and self.enable_viewer_sync and self.debug_viz:
+            # self._draw_debug_vis()
+            if self.cfg.depth.use_camera:
+                window_name = "Depth Image"
+                cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+                cv2.imshow("Depth Image", self.depth_buffer[0, -1].cpu().numpy() + 0.5)
+                cv2.waitKey(1)
 
         return env_ids, terminal_amp_states
 

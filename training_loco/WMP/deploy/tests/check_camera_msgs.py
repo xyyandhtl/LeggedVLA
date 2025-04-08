@@ -5,13 +5,13 @@ import select
 
 import numpy as np
 
-from go1_gym_deploy.lcm_types.leg_control_data_lcmt import leg_control_data_lcmt
-from go1_gym_deploy.lcm_types.rc_command_lcmt import rc_command_lcmt
-from go1_gym_deploy.lcm_types.state_estimator_lcmt import state_estimator_lcmt
-from go1_gym_deploy.lcm_types.vicon_pose_lcmt import vicon_pose_lcmt
-from go1_gym_deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
-from go1_gym_deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
-from go1_gym_deploy.lcm_types.camera_message_rect_wide_mask import camera_message_rect_wide_mask
+from deploy.lcm_types.leg_control_data_lcmt import leg_control_data_lcmt
+from deploy.lcm_types.rc_command_lcmt import rc_command_lcmt
+from deploy.lcm_types.state_estimator_lcmt import state_estimator_lcmt
+from deploy.lcm_types.vicon_pose_lcmt import vicon_pose_lcmt
+from deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
+from deploy.lcm_types.camera_message_rect_wide import camera_message_rect_wide
+from deploy.lcm_types.camera_message_rect_wide_mask import camera_message_rect_wide_mask
 
 
 class UnitreeLCMInspector:

@@ -100,3 +100,6 @@ training_vla/NavRL/outputs
 training_vla/NavRL/wandb
 
 env_isaaclab/isaac_vlnce/isaaclab_exts/omni.isaac.vlnce/assets
+
+training_loco/WMP/resources/robots/go1/meshes
+training_loco/WMP/resources/robots/go2/meshes

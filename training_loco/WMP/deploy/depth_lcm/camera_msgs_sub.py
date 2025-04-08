@@ -1,7 +1,7 @@
 import lcm
 import numpy as np
 import sys
-sys.path.append("/home/unitree/go1_gym/go1_gym_deploy")
+sys.path.append("/home/unitree/go1_gym/deploy")
 from lcm_types.camera_message_lcmt import camera_message_lcmt
 #from realsense import A1RealSense
 

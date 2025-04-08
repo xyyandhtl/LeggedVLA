@@ -1,18 +1,15 @@
 import copy
 import time
 import os
-import sys
-sys.path.append("/home/nano/walk-these-ways/")
-from go1_gym_deploy.lcm_types.camera_message_lcmt import camera_message_lcmt
+
 import numpy as np
 import torch
-import threading
-from depth_lcm.realsense import Go1RealSense
-from go1_gym_deploy.utils.logger import MultiLogger
+
+from deploy.utils.logger import MultiLogger
 
 
 class DeploymentRunner:
-    def __init__(self, lcm_connection, se=None, log_root="."):
+    def __init__(self, experiment_name="unnamed", se=None, log_root="."):
         self.agents = {}
         self.policy = None
         self.command_profile = None
@@ -30,52 +27,6 @@ class DeploymentRunner:
 
         self.is_currently_probing = False
         self.is_currently_logging = [False, False, False, False]
-
-        # Muye --> Depth Image module
-        if lcm_connection is not None:
-            self.lc = lcm_connection
-            self.depth_sub = self.lc.subscribe("depth_image", self.realsense_callback)
-
-        self.depth_image = None
-        self.depth_image_init = torch.ones((1,1,48,64))
-        self.depth_encoder = None
-        self.agent = None
-        self.depth_action = None
-        self.img_list = []
-
-    # Muye --> realsense callback
-    #############################
-    def realsense_callback(self, channel, msg):
-        img_str = camera_message_lcmt.decode(msg)
-        utf_str = img_str.data
-        img = np.frombuffer(utf_str, dtype=np.uint16)
-        img = np.array(img/5000.0, dtype=np.float32)
-        img_tensor = torch.from_numpy(img).float().view(1,1,64,64)
-        img_resized = torch.nn.functional.interpolate(img_tensor, size=(48, 64))
-
-        self.depth_image = img_resized
-
-    def _test_recv(self):
-       while self.depth_image is None:
-         print("waiting for image")
-
-       if self.depth_image is not None:
-         print(f"depth image shape: {self.depth_image.shape}")
-
-    def add_encoder(self, depth_enc):
-        """
-        Add the depth encoder if using vision
-        """
-        self.depth_encoder = depth_enc
-
-    # process depth encoder in a separate thread
-    def process_depth(self, control_obs, policy_info):
-        while self.depth_image is not None:
-            self.lc.handle()
-            action = self.policy(control_obs, self.depth_image, policy_info)
-            self.depth_action = action
-
-    #############################
 
     def init_log_filename(self):
         datetime = time.strftime("%Y/%m_%d/%H_%M_%S")
@@ -109,6 +60,7 @@ class DeploymentRunner:
 
     def add_command_profile(self, command_profile):
         self.command_profile = command_profile
+
 
     def calibrate(self, wait=True, low=False):
         # first, if the robot is not in nominal pose, move slowly to the nominal pose
@@ -185,36 +137,12 @@ class DeploymentRunner:
         control_obs = self.calibrate(wait=True)
 
         # now, run control loop
-        policy_info = {}
-        if self.depth_encoder is not None:
-            cam_obj = Go1RealSense()
-            cam_obj.start_depth_thread()
-
-            while cam_obj.get_latest_frame() is None:
-                print("depth frame has not yet arrived")
 
         try:
             for i in range(max_steps):
-                policy_info = {}
 
-                # Muye
-                if self.depth_encoder is not None:
-                    latest_depth_frame = cam_obj.get_latest_frame()
-                    # print(f"latest frame {latest_depth_frame}")
-                    start_time = time.time()
-                    if latest_depth_frame is not None:
-                        action = self.policy(control_obs, latest_depth_frame, policy_info)
-                        end_time = time.time()
-                        print(f"depth action: {action}")
-                        print(f"time used: {end_time - start_time}")
-                    else:
-                        print("depth frame is empty")
-                else:
-                    start_time = time.time()
-                    print("using state-only actions")
-                    action = self.policy(control_obs, policy_info)
-                    end_time = time.time()
-                    print(f"time used: {end_time - start_time}")
+                policy_info = {}
+                action = self.policy(control_obs, policy_info)
 
                 for agent_name in self.agents.keys():
                     obs, ret, done, info = self.agents[agent_name].step(action)
@@ -227,6 +155,115 @@ class DeploymentRunner:
 
                     if agent_name == self.control_agent_name:
                         control_obs, control_ret, control_done, control_info = obs, ret, done, info
+
+                # bad orientation emergency stop
+                rpy = self.agents[self.control_agent_name].se.get_rpy()
+                if abs(rpy[0]) > 1.6 or abs(rpy[1]) > 1.6:
+                    self.calibrate(wait=False, low=True)
+
+                # check for logging command
+                prev_button_states = self.button_states[:]
+                self.button_states = self.command_profile.get_buttons()
+
+                if self.command_profile.state_estimator.left_lower_left_switch_pressed:
+                    if not self.is_currently_probing:
+                        print("START LOGGING")
+                        self.is_currently_probing = True
+                        self.agents[self.control_agent_name].set_probing(True)
+                        self.init_log_filename()
+                        self.logger.reset()
+                    else:
+                        print("SAVE LOG")
+                        self.is_currently_probing = False
+                        self.agents[self.control_agent_name].set_probing(False)
+                        # calibrate, log, and then resume control
+                        control_obs = self.calibrate(wait=False)
+                        self.logger.save(self.log_filename)
+                        self.init_log_filename()
+                        self.logger.reset()
+                        time.sleep(1)
+                        control_obs = self.agents[self.control_agent_name].reset()
+                    self.command_profile.state_estimator.left_lower_left_switch_pressed = False
+
+                for button in range(4):
+                    if self.command_profile.currently_triggered[button]:
+                        if not self.is_currently_logging[button]:
+                            print("START LOGGING")
+                            self.is_currently_logging[button] = True
+                            self.init_log_filename()
+                            self.logger.reset()
+                    else:
+                        if self.is_currently_logging[button]:
+                            print("SAVE LOG")
+                            self.is_currently_logging[button] = False
+                            # calibrate, log, and then resume control
+                            control_obs = self.calibrate(wait=False)
+                            self.logger.save(self.log_filename)
+                            self.init_log_filename()
+                            self.logger.reset()
+                            time.sleep(1)
+                            control_obs = self.agents[self.control_agent_name].reset()
+
+                if self.command_profile.state_estimator.right_lower_right_switch_pressed:
+                    control_obs = self.calibrate(wait=False)
+                    time.sleep(1)
+                    self.command_profile.state_estimator.right_lower_right_switch_pressed = False
+                    # self.button_states = self.command_profile.get_buttons()
+                    while not self.command_profile.state_estimator.right_lower_right_switch_pressed:
+                        time.sleep(0.01)
+                        # self.button_states = self.command_profile.get_buttons()
+                    self.command_profile.state_estimator.right_lower_right_switch_pressed = False
+
+            # finally, return to the nominal pose
+            control_obs = self.calibrate(wait=False)
+            self.logger.save(self.log_filename)
+
+        except KeyboardInterrupt:
+            self.logger.save(self.log_filename)
+
+    def run_wmp_policy(self, max_steps=100000000, logging=True):
+        assert self.control_agent_name is not None, "cannot deploy, runner has no control agent!"
+        assert self.policy is not None, "cannot deploy, runner has no policy!"
+        assert self.command_profile is not None, "cannot deploy, runner has no command profile!"
+
+        # TODO: add basic test for comms
+
+        for agent_name in self.agents.keys():
+            obs = self.agents[agent_name].reset()
+            if agent_name == self.control_agent_name:
+                control_obs = obs
+
+        print('-----------------')
+        control_obs = self.calibrate(wait=True)
+        wmp_obs = self.policy.obs_convert_from_wtw_env(control_obs)
+        self.policy.init_wmp_policy(wmp_obs)
+        print('-----------------')
+
+        # now, run control loop
+
+        try:
+            for i in range(max_steps):
+                policy_info = {}
+                # action = self.policy(control_obs, policy_info)
+                wmp_obs = self.policy.obs_convert_from_wtw_env(control_obs)
+                action = self.policy.inference_action(wmp_obs)
+
+                for agent_name in self.agents.keys():
+                    obs, ret, done, info = self.agents[agent_name].step(action.detach())
+
+                    info.update(policy_info)
+                    info.update({"observation": obs, "reward": ret, "done": done, "timestep": i,
+                                 "time": i * self.agents[self.control_agent_name].dt, "action": action, "rpy": self.agents[self.control_agent_name].se.get_rpy(), "torques": self.agents[self.control_agent_name].torques})
+
+                    if logging: self.logger.log(agent_name, info)
+
+                    if agent_name == self.control_agent_name:
+                        control_obs, control_ret, control_done, control_info = obs, ret, done, info
+
+                # WMP update world model
+                wmp_obs = self.policy.obs_convert_from_wtw_env(control_obs)
+                depth = torch.from_numpy(np.ones(self.policy.depth_resized) * 0.5)  # for test
+                self.policy.update_wm(action, wmp_obs, depth)
 
                 # bad orientation emergency stop
                 rpy = self.agents[self.control_agent_name].se.get_rpy()
