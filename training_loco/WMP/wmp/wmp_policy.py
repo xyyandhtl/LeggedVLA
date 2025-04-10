@@ -1,8 +1,4 @@
-import sys
 from pathlib import Path
-LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent.parent / 'training_loco/WMP')
-sys.path.append(LEGGED_GYM_ROOT_DIR)
-
 import numpy as np
 import torch
 import os
@@ -67,7 +63,7 @@ class WMPPolicy:
 
         # load policy
         train_cfg.runner.resume = True
-        train_cfg.runner.load_run = 'aliengo'
+        train_cfg.runner.load_run = 'a1'
         # train_cfg.runner.load_run = 'go2'
 
         train_cfg.runner.checkpoint = -1    # 9000
@@ -146,7 +142,7 @@ class WMPPolicy:
     def update_wm(self, actions, obs, depth, reset_env_ids=None):
         if self.global_counter % self.wm_update_interval == 0:
             if self.use_camera:
-                # depth = torch.from_numpy(np.ones(self.depth_resized) * 0.5)   # for depth-zero input test
+                depth = torch.from_numpy(np.ones(self.depth_resized) * 0.5)   # for depth-zero input test
                 self.wm_obs["image"][0] = depth.unsqueeze(-1).to(self.world_model.device)
                 # print(f'depth {depth}')
 
@@ -214,6 +210,11 @@ class WMPPolicy:
         wmp_obs[:, self.privileged_dim:self.privileged_dim + self.prop_dim + self.num_actions] = lab_obs[:, 3:]
         wmp_obs[:, self.privileged_dim:self.privileged_dim + 3] *= 0.25                 # WMP normalization
         wmp_obs[:, self.privileged_dim + 21:self.privileged_dim + self.prop_dim] *= 0.05    # WMP normalization
+        wmp_obs[:, [self.privileged_dim + 10, self.privileged_dim + 13, self.privileged_dim + 16, self.privileged_dim + 19]] -= 0.8    # WMP normalization
+        wmp_obs[:, [self.privileged_dim + 11, self.privileged_dim + 14, self.privileged_dim + 17, self.privileged_dim + 20]] += 1.5    # WMP normalization
+        # wmp_obs[:, [self.privileged_dim + 13, self.privileged_dim + 14, self.privileged_dim + 15, self.privileged_dim + 16]] -= 0.8  # WMP normalization
+        # wmp_obs[:, [self.privileged_dim + 17, self.privileged_dim + 18, self.privileged_dim + 19, self.privileged_dim + 20]] += 1.5    # WMP normalization
+        # wmp_obs[:, self.privileged_dim + self.prop_dim:self.privileged_dim + self.prop_dim + self.num_actions] *= 4    # WMP normalization
         return wmp_obs
 
     def obs_convert_from_wtw_env(self, control_obs):

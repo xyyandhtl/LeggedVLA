@@ -6,7 +6,7 @@ import torch
 import time
 import math
 import numpy as np
-import cv2
+
 
 FILE_PATH = os.path.join(os.path.dirname(__file__), "cfg")
 @hydra.main(config_path=FILE_PATH, config_name="sim", version_base=None)
@@ -25,7 +25,13 @@ def run_simulator(cfg):
     import env.matterport3d_env as matterport3d_env
     import go2.go2_sensors as go2_sensors
 
-    from wmp.wmp_policy import WMPPolicy
+    if cfg.policy == "WMP":
+        import sys
+        from pathlib import Path
+        LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent / 'training_loco/WMP')
+        sys.path.append(LEGGED_GYM_ROOT_DIR)
+        from wmp.wmp_policy import WMPPolicy
+        wmp_policy = WMPPolicy()
 
     # Go2 Environment setup
     go2_env_cfg = Go2RSLEnvCfg()
@@ -60,9 +66,6 @@ def run_simulator(cfg):
     elif (cfg.env_name == "matterport3d"):
         matterport3d_env.create_matterport3d_env(cfg.episode_idx) # matterport3d
 
-
-    wmp_policy = WMPPolicy()
-
     # Sensor setup
     sm = go2_sensors.SensorManager(cfg.num_envs)
     lidar_annotators = sm.add_rtx_lidar()
@@ -86,38 +89,36 @@ def run_simulator(cfg):
 
     while simulation_app.is_running():
         start_time = time.time()
-        with torch.inference_mode():            
-            # control joints
-            # actions = policy(obs)
+        with torch.inference_mode():
+            if cfg.policy == "WMP":
+                # todo: debug what's wrong with wmp migration in isaaclab
+                wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
+                actions = wmp_policy.inference_action(wmp_obs)
+                obs_list = obs.cpu().numpy().tolist()[0]
+                obs_list = ["{:.2f}".format(v) for v in obs_list]
+                print(f'obs: {obs_list}')
+                print(f'[{start_time}] actions: {actions}')
+            else:
+                actions = policy(obs)
 
-            wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
-            actions = wmp_policy.inference_action(wmp_obs)
-
-            obs_list = obs.cpu().numpy().tolist()[0]
-            obs_list = ["{:.2f}".format(v) for v in obs_list]
-            print(f'obs: {obs_list}')
-            print(f'[{start_time}] actions: {actions}')
-
-            # step the environment
             obs, _, _, _ = env.step(actions)
-            depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
+            # obs, _, _, _ = env.step(actions)
 
-            # if wmp_policy.global_counter % wmp_policy.wm_update_interval == 0:
-            # for i, camera in enumerate(cameras):
-            #     depth = camera.get_depth()
-            #     if depth is not None:
-            #
-            #         depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
-            #         depth = -(depth / 2 - 0.5)
-            #         depth[(depth < -0.5) | (depth > 0.5)] = 0.5
-            #         depth = np.flipud(depth)
-            #
-            #         cv2.imwrite(f'./logs/depth_{wmp_policy.global_counter}.png', depth + 0.5)
-            #         # print(f'depth {depth}')
-            #         depth_tensor[i] = torch.from_numpy(depth.copy())
-
-            wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
-            wmp_policy.update_wm(actions, wmp_obs, depth_tensor)
+            if cfg.policy == "WMP":
+                # step the environment
+                depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
+                for i, camera in enumerate(cameras):
+                    depth = camera.get_depth()
+                    if depth is not None:
+                        depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
+                        depth = -(depth / 2 - 0.5)
+                        depth[(depth < -0.5) | (depth > 0.5)] = 0.5
+                        depth = np.flipud(depth)
+                        # cv2.imwrite(f'./logs/depth_{wmp_policy.global_counter}.png', depth + 0.5)
+                        # print(f'depth {depth}')
+                        depth_tensor[i] = torch.from_numpy(depth.copy())
+                wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
+                wmp_policy.update_wm(actions, wmp_obs, depth_tensor)
 
             # # ROS2 data
             dm.pub_ros2_data()

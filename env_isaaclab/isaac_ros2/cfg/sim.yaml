@@ -4,9 +4,9 @@ defaults:
 num_envs: 1
 freq: 40 # can only be divisible by 200
 camera_follow: True
-env_name: obstacle-dense
+#env_name: obstacle-dense
 #env_name: hospital
-#env_name: full-warehouse
+env_name: full-warehouse
 #env_name: matterport3d
 episode_idx: 0
 
@@ -22,3 +22,5 @@ sim_app:
   width: 1280
   height: 720
   hide_ui: False
+
+policy: default

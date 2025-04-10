@@ -187,8 +187,8 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 20.0 # can be ignored
         self.is_finite_horizon = False
         self.actions.joint_pos.scale = 0.25
-        # self.actions.joint_pos.scale = 0.5
-        # self.observations.policy.joint_vel.scale
+        # self.observations.policy.joint_pos.scale = 0.25
+        # self.observations.policy.joint_vel.scale = 0.05
 
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt

@@ -122,13 +122,13 @@ Visualization Manager:
       Median window: 5
       Min Value: 0
       Name: DepthImage
-      Normalize Range: true
+      Normalize Range: false
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /unitree_go2/front_cam/depth_image
+        Value: /unitree_go2/front_cam/color_image
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
