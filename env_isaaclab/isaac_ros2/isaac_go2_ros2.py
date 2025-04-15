@@ -6,6 +6,7 @@ import torch
 import time
 import math
 import numpy as np
+import cv2
 
 
 FILE_PATH = os.path.join(os.path.dirname(__file__), "cfg")
@@ -25,14 +26,6 @@ def run_simulator(cfg):
     import env.matterport3d_env as matterport3d_env
     import go2.go2_sensors as go2_sensors
 
-    if cfg.policy == "WMP":
-        import sys
-        from pathlib import Path
-        LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent / 'training_loco/WMP')
-        sys.path.append(LEGGED_GYM_ROOT_DIR)
-        from wmp.wmp_policy import WMPPolicy
-        wmp_policy = WMPPolicy()
-
     # Go2 Environment setup
     go2_env_cfg = Go2RSLEnvCfg()
     go2_env_cfg.scene.num_envs = cfg.num_envs
@@ -41,8 +34,20 @@ def run_simulator(cfg):
     print(f'decimation {go2_env_cfg.decimation}')
     go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
     go2_ctrl.init_base_vel_cmd(cfg.num_envs)
-    # env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
-    env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
+    print(f'go2_env_cfg policy: {go2_env_cfg.observations.policy}')
+    print(f'go2_env_cfg actuator: {go2_env_cfg.actions}')
+    print(f'go2_env_cfg robot: {go2_env_cfg.scene.unitree_go2}')
+    if cfg.policy == "WMP":
+        import sys
+        from pathlib import Path
+        LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent / 'training_loco/WMP_loco')
+        sys.path.append(LEGGED_GYM_ROOT_DIR)
+        from wmp.wmp_policy import WMPPolicy
+        wmp_policy = WMPPolicy()
+        env = go2_ctrl.get_rsl_env(go2_env_cfg)
+    else:
+        # env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
+        env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
 
     # Simulation environment
     if (cfg.env_name == "obstacle-dense"):
@@ -69,7 +74,10 @@ def run_simulator(cfg):
     # Sensor setup
     sm = go2_sensors.SensorManager(cfg.num_envs)
     lidar_annotators = sm.add_rtx_lidar()
-    cameras = sm.add_camera(cfg.freq)
+    if cfg.policy == "WMP":
+        cameras = sm.add_camera_wmp(cfg.freq)
+    else:
+        cameras = sm.add_camera(cfg.freq)
 
     # Keyboard control
     system_input = carb.input.acquire_input_interface()
@@ -98,27 +106,38 @@ def run_simulator(cfg):
                 obs_list = ["{:.2f}".format(v) for v in obs_list]
                 print(f'obs: {obs_list}')
                 print(f'[{start_time}] actions: {actions}')
-            else:
-                actions = policy(obs)
-
-            obs, _, _, _ = env.step(actions)
-            # obs, _, _, _ = env.step(actions)
-
-            if cfg.policy == "WMP":
+                forward_index_list = [
+                    0, 3, 6, 9,  # hip joints
+                    1, 4, 7, 10,  # thigh joints
+                    2, 5, 8, 11  # calf joints
+                ]
+                # forward_index_list = [0, 6, 3, 9, 1, 7, 4, 10, 2, 8, 5, 11]
+                obs, _, _, _ = env.step(actions[:, forward_index_list])
                 # step the environment
                 depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
                 for i, camera in enumerate(cameras):
                     depth = camera.get_depth()
                     if depth is not None:
                         depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
-                        depth = -(depth / 2 - 0.5)
-                        depth[(depth < -0.5) | (depth > 0.5)] = 0.5
-                        depth = np.flipud(depth)
-                        # cv2.imwrite(f'./logs/depth_{wmp_policy.global_counter}.png', depth + 0.5)
-                        # print(f'depth {depth}')
+                        # with open("depth_output.txt", "w") as f:
+                        #     f.write("original depth:\n")
+                        #     f.write(np.array2string(depth, separator=', ', threshold=np.inf))
+                        # 归一化到 0-255（你也可以设置 max_depth 自定义范围）
+                        depth_normalized = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
+                        depth_normalized = depth_normalized.astype(np.uint8)
+                        # 应用伪彩色映射
+                        depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
+                        # 保存图片
+                        cv2.imwrite("depth_visualization.png", depth_colored)
+                        depth = depth / 2 - 0.5
+                        depth[(depth <= -0.5) | (depth > 0.5)] = 0.5
                         depth_tensor[i] = torch.from_numpy(depth.copy())
                 wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
+                # wmp_policy.update_wm(actions, wmp_obs, torch.from_numpy(np.ones(wmp_policy.depth_resized) * 0.5))
                 wmp_policy.update_wm(actions, wmp_obs, depth_tensor)
+            else:
+                actions = policy(obs)
+                obs, _, _, _ = env.step(actions)
 
             # # ROS2 data
             dm.pub_ros2_data()

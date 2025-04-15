@@ -60,6 +60,7 @@ class SensorManager:
             focal_length_sim = camera.get_horizontal_aperture() / 2 / np.tan(np.radians(horizontal_fov) / 2)
             camera.set_focal_length(focal_length_sim)
             print(f'camera fov {np.degrees(camera.get_horizontal_fov())} degrees')
+            camera.set_clipping_range(near_distance=0.05, far_distance=4.0)
             camera.add_distance_to_image_plane_to_frame()
             cameras.append(camera)
         return cameras

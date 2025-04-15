@@ -1,0 +1,3 @@
+[submodule "training_loco/WMP_loco"]
+	path = training_loco/WMP_loco
+	url = https://github.com/xyyandhtl/WMP_deploy.git

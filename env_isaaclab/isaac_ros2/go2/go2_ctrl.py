@@ -24,8 +24,8 @@ def base_vel_cmd(env: ManagerBasedEnv) -> torch.Tensor:
 # Update sub_keyboard_event to modify specific rows of the tensor based on key inputs
 def sub_keyboard_event(event) -> bool:
     global base_vel_cmd_input
-    lin_vel = 1.5
-    ang_vel = 1.5
+    lin_vel = 1.0
+    ang_vel = 0.6
     
     if base_vel_cmd_input is not None:
         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
@@ -93,3 +93,9 @@ def get_rsl_rough_policy(cfg):
     ppo_runner.load(ckpt_path)
     policy = ppo_runner.get_inference_policy(device=agent_cfg["device"])
     return env, policy
+
+def get_rsl_env(cfg):
+    cfg.observations.policy.height_scan = None
+    env = gym.make("Isaac-Velocity-Flat-Unitree-Go2-v0", cfg=cfg)
+    env = RslRlVecEnvWrapper(env)
+    return env

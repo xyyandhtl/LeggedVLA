@@ -51,13 +51,16 @@ class Go2SimCfg(InteractiveSceneCfg):
             joint_pos={
                 ".*L_hip_joint": 0.1,
                 ".*R_hip_joint": -0.1,
-                "F[L,R]_thigh_joint": 0.8,
+                "F[L,R]_thigh_joint": 0.7,
                 "R[L,R]_thigh_joint": 1.0,
                 ".*_calf_joint": -1.5,
             },
             joint_vel={".*": 0.0},
         ),
     )
+    unitree_go2.actuators["base_legs"].stiffness = 40.0
+    unitree_go2.actuators["base_legs"].damping = 1.0
+    print('joint_names_expr:', unitree_go2.actuators["base_legs"].joint_names_expr)
 
     # Go2 foot contact sensor
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Go2/.*_foot", history_length=3, track_air_time=True)
@@ -70,6 +73,7 @@ class Go2SimCfg(InteractiveSceneCfg):
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
         debug_vis=False,
         # mesh_prim_paths=["/World/Mp3d/mesh"],
+        # mesh_prim_paths=["/World/Warehouse"],
         mesh_prim_paths=["/World/ground"],
     )
     del init_pos
@@ -187,8 +191,9 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 20.0 # can be ignored
         self.is_finite_horizon = False
         self.actions.joint_pos.scale = 0.25
-        # self.observations.policy.joint_pos.scale = 0.25
-        # self.observations.policy.joint_vel.scale = 0.05
+        self.observations.policy.base_ang_vel.scale = 0.25
+        self.observations.policy.joint_vel.scale = 0.05
+        # self.observations.policy.base_vel_cmd.scale = [1, 1, ]
 
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
