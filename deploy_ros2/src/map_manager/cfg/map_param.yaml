@@ -1,10 +1,10 @@
 map_manager_node:
   ros__parameters:
     localization_mode: 0 # 0: pose (default) 1: odom
-    depth_image_topic: /unitree_go2/front_cam/depth_image
-    point_cloud_topic: /unitree_go2/lidar/point_cloud
-    pose_topic: /unitree_go2/pose
-    odom_topic: /unitree_go2/odom
+    depth_image_topic: /legged/front_cam/depth_image
+    point_cloud_topic: /legged/lidar/point_cloud
+    pose_topic: /legged/pose
+    odom_topic: /legged/odom
 
     # robot size
     robot_size: [0.3, 0.3, 0.1]

@@ -1,10 +1,10 @@
 dynamic_detector_node:
   ros__parameters:
     localization_mode: 0 # 0: pose (default) 1: odom
-    depth_image_topic: /unitree_go2/front_cam/depth_image
-    color_image_topic: /unitree_go2/front_cam/color_image
-    pose_topic: /unitree_go2/pose
-    odom_topic: /unitree_go2/odom
+    depth_image_topic: /legged/front_cam/depth_image
+    color_image_topic: /legged/front_cam/color_image
+    pose_topic: /legged/pose
+    odom_topic: /legged/odom
 
     # camera parameters
     depth_intrinsics: [458.1245542807029, 458.1245542807029, 320.0, 240.0] # fx,  fy, cx, cy

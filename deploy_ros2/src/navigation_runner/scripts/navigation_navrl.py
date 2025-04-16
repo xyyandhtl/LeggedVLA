@@ -54,7 +54,7 @@ class Navigation(Node):
         self.get_logger().info(f"[navRunner]: Visualize raycast is set to: {self.vis_raycast}.")
 
         # Subscriber
-        self.declare_parameter('odom_topic', '/unitree_go2/odom')
+        self.declare_parameter('odom_topic', '/legged/odom')
         odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.get_logger().info(f"[navRunner]: Odom topic name: {odom_topic}.")
         self.odom_sub = self.create_subscription(Odometry, odom_topic, self.odom_callback, 10) # odom
@@ -62,7 +62,7 @@ class Navigation(Node):
         self.emergency_stop_sub = self.create_subscription(Bool, '/navigation_emergency_stop', self.safety_check_callback, 10) # safety check
         
         # Publisher
-        self.declare_parameter('cmd_topic', '/unitree_go2/cmd_vel')
+        self.declare_parameter('cmd_topic', '/legged/cmd_vel')
         cmd_topic = self.get_parameter('cmd_topic').get_parameter_value().string_value
         self.get_logger().info(f"[navRunner]: Command topic name: {cmd_topic}.")
         self.action_pub = self.create_publisher(Twist, cmd_topic, 10)

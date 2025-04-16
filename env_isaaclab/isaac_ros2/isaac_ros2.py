@@ -29,10 +29,14 @@ def run_simulator(cfg):
         from agent.scene_go2 import Go2RSLEnvCfg, camera_follow
         # Go2 Environment setup
         env_cfg = Go2RSLEnvCfg()
+        print(f'{cfg.robot_name} env_cfg robot: {env_cfg.scene.unitree_go2}')
+        sm = agent_sensors.SensorManagerGo2(cfg.num_envs)
     elif cfg.robot_name == 'unitree_a1':
         from agent.scene_a1 import A1RSLEnvCfg, camera_follow
         # Go2 Environment setup
         env_cfg = A1RSLEnvCfg()
+        print(f'{cfg.robot_name} env_cfg robot: {env_cfg.scene.unitree_a1}')
+        sm = agent_sensors.SensorManagerA1(cfg.num_envs)
     else:
         raise NotImplementedError(f'[{cfg.robot_name}] env has not been implemented yet')
     env_cfg.scene.num_envs = cfg.num_envs
@@ -43,7 +47,6 @@ def run_simulator(cfg):
     agent_ctrl.init_base_vel_cmd(cfg.num_envs)
     print(f'{cfg.robot_name} env_cfg policy: {env_cfg.observations.policy}')
     print(f'{cfg.robot_name} env_cfg actuator: {env_cfg.actions}')
-    print(f'{cfg.robot_name} env_cfg robot: {env_cfg.scene.unitree_go2}')
 
     if cfg.policy == "WMP":
         import sys
@@ -53,10 +56,14 @@ def run_simulator(cfg):
         from wmp.wmp_policy import WMPPolicy
         wmp_policy = WMPPolicy()
         env = agent_ctrl.get_rsl_env(env_cfg, robot_prim_dict[cfg.robot_name])
+        cameras_depth = sm.add_camera_wmp(cfg.freq)
     else:
         # only have go2 checkpoints
         # env, policy = agent_ctrl.get_rsl_flat_policy_go2(go2_env_cfg)
         env, policy = agent_ctrl.get_rsl_rough_policy_go2(env_cfg)
+    # Sensor setup
+    cameras = sm.add_camera(cfg.freq)
+    lidar_annotators = sm.add_rtx_lidar()
 
     # Simulation environment
     if (cfg.env_name == "obstacle-dense"):
@@ -80,18 +87,13 @@ def run_simulator(cfg):
     elif (cfg.env_name == "matterport3d"):
         matterport3d_env.create_matterport3d_env(cfg.episode_idx) # matterport3d
 
-    # Sensor setup
-    sm = agent_sensors.SensorManager(cfg.num_envs)
-    lidar_annotators = sm.add_rtx_lidar()
-    if cfg.policy == "WMP":
-        cameras = sm.add_camera_wmp(cfg.freq)
-    else:
-        cameras = sm.add_camera(cfg.freq)
-
     # Keyboard control
     system_input = carb.input.acquire_input_interface()
-    system_input.subscribe_to_keyboard_events(
-        omni.appwindow.get_default_app_window().get_keyboard(), agent_ctrl.sub_keyboard_event)
+    keyboard = omni.appwindow.get_default_app_window().get_keyboard()
+    system_input.subscribe_to_keyboard_events(keyboard, agent_ctrl.sub_keyboard_event)
+    # reset control
+    reset_ctrl = agent_ctrl.AgentResetControl()
+    system_input.subscribe_to_keyboard_events(keyboard, reset_ctrl.sub_keyboard_event)
     
     # ROS2 Bridge
     rclpy.init()
@@ -105,6 +107,13 @@ def run_simulator(cfg):
     print(f'init obs: {obs_list}')
 
     while simulation_app.is_running():
+        # if reset_ctrl.reset_flag:
+        #     obs, _ = env.reset()
+        #     simulation_app.update()
+        #     print(f'env reset done')
+        #     # if cfg.policy == "WMP":
+        #     #     wmp_policy.reset_envs([0])
+        #     reset_ctrl.reset_flag = False
         start_time = time.time()
         with torch.inference_mode():
             if cfg.policy == "WMP":
@@ -124,7 +133,7 @@ def run_simulator(cfg):
                 obs, _, _, _ = env.step(actions[:, forward_index_list])
                 # step the environment
                 depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
-                for i, camera in enumerate(cameras):
+                for i, camera in enumerate(cameras_depth):
                     depth = camera.get_depth()
                     if depth is not None:
                         depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)

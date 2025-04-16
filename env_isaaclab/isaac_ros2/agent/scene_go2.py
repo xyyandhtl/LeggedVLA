@@ -3,6 +3,8 @@ from omni.isaac.lab_assets.unitree import UNITREE_GO2_CFG
 from omni.isaac.lab.sensors import RayCasterCfg, patterns, ContactSensorCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
+# from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
+# print(f'ISAACLAB_NUCLEUS_DIR {ISAACLAB_NUCLEUS_DIR}')
 import omni.isaac.lab.sim as sim_utils
 import omni.isaac.lab.envs.mdp as mdp
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
@@ -159,7 +161,7 @@ class CurriculumCfg:
 class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the Go2 environment."""
     # scene settings
-    scene = Go2SimCfg(num_envs=2, env_spacing=2.0)
+    scene = Go2SimCfg(num_envs=1, env_spacing=2.0)
 
     # basic settings
     observations = ObservationsCfg()

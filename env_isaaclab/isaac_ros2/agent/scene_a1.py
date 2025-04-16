@@ -1,5 +1,5 @@
 from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab_assets.unitree import UNITREE_GO2_CFG
+from omni.isaac.lab_assets.unitree import UNITREE_A1_CFG
 from omni.isaac.lab.sensors import RayCasterCfg, patterns, ContactSensorCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
@@ -44,14 +44,14 @@ class A1SimCfg(InteractiveSceneCfg):
     cylinder_light.init_state.pos = (init_pos[0], init_pos[1], init_pos[2] + 2.0)
 
     # A1 Robot
-    unitree_a1: ArticulationCfg = UNITREE_GO2_CFG.replace(
+    unitree_a1: ArticulationCfg = UNITREE_A1_CFG.replace(
         prim_path="{ENV_REGEX_NS}/A1",
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(init_pos[0] - 4, init_pos[1], init_pos[2] + 0.40),
+            pos=(init_pos[0], init_pos[1], init_pos[2] + 0.45),  # init height 0.4
             joint_pos={
                 ".*L_hip_joint": 0.1,
                 ".*R_hip_joint": -0.1,
-                "F[L,R]_thigh_joint": 0.7,
+                "F[L,R]_thigh_joint": 0.8,
                 "R[L,R]_thigh_joint": 1.0,
                 ".*_calf_joint": -1.5,
             },
@@ -67,7 +67,7 @@ class A1SimCfg(InteractiveSceneCfg):
 
     # A1 height scanner
     height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/A1/base",
+        prim_path="{ENV_REGEX_NS}/A1/trunk",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.5)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
@@ -159,7 +159,7 @@ class CurriculumCfg:
 class A1RSLEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the A1 environment."""
     # scene settings
-    scene = A1SimCfg(num_envs=2, env_spacing=2.0)
+    scene = A1SimCfg(num_envs=1, env_spacing=2.0)
 
     # basic settings
     observations = ObservationsCfg()

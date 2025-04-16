@@ -24,8 +24,8 @@ def base_vel_cmd(env: ManagerBasedEnv) -> torch.Tensor:
 # Update sub_keyboard_event to modify specific rows of the tensor based on key inputs
 def sub_keyboard_event(event) -> bool:
     global base_vel_cmd_input
-    lin_vel = 1.0
-    ang_vel = 0.6
+    lin_vel = 1.2
+    ang_vel = 0.5
     
     if base_vel_cmd_input is not None:
         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
@@ -63,6 +63,16 @@ def sub_keyboard_event(event) -> bool:
             base_vel_cmd_input.zero_()
             # base_vel_cmd_input[0] = torch.tensor([0.8, 0, 0], dtype=torch.float32)
     return True
+
+class AgentResetControl:
+    def __init__(self):
+        self.reset_flag = False
+
+    def sub_keyboard_event(self, event, *args, **kwargs):
+        if event.type == carb.input.KeyboardEventType.KEY_PRESS:
+            if event.input.name == 'R':
+                print("[KEYBOARD] Reset key pressed")
+                self.reset_flag = True
 
 def get_rsl_flat_policy_go2(cfg):
     cfg.observations.policy.height_scan = None
