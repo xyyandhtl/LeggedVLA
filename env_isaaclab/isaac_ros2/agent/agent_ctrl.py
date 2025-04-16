@@ -3,7 +3,7 @@ import torch
 import carb
 import gymnasium as gym
 from omni.isaac.lab.envs import ManagerBasedEnv
-from go2.go2_ctrl_cfg import unitree_go2_flat_cfg, unitree_go2_rough_cfg
+from agent.ctrl_cfg import unitree_go2_flat_cfg, unitree_go2_rough_cfg
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlVecEnvWrapper, RslRlOnPolicyRunnerCfg
 from omni.isaac.lab_tasks.utils import get_checkpoint_path
 from rsl_rl.runners import OnPolicyRunner
@@ -64,7 +64,7 @@ def sub_keyboard_event(event) -> bool:
             # base_vel_cmd_input[0] = torch.tensor([0.8, 0, 0], dtype=torch.float32)
     return True
 
-def get_rsl_flat_policy(cfg):
+def get_rsl_flat_policy_go2(cfg):
     cfg.observations.policy.height_scan = None
     env = gym.make("Isaac-Velocity-Flat-Unitree-Go2-v0", cfg=cfg)
     # env = gym.make("Isaac-Velocity-Flat-Unitree-A1-v0", cfg=cfg)
@@ -80,7 +80,7 @@ def get_rsl_flat_policy(cfg):
     policy = ppo_runner.get_inference_policy(device=agent_cfg["device"])
     return env, policy
 
-def get_rsl_rough_policy(cfg):
+def get_rsl_rough_policy_go2(cfg):
     env = gym.make("Isaac-Velocity-Rough-Unitree-Go2-v0", cfg=cfg)
     env = RslRlVecEnvWrapper(env)
 
@@ -94,8 +94,8 @@ def get_rsl_rough_policy(cfg):
     policy = ppo_runner.get_inference_policy(device=agent_cfg["device"])
     return env, policy
 
-def get_rsl_env(cfg):
+def get_rsl_env(cfg, unitree_robot):
     cfg.observations.policy.height_scan = None
-    env = gym.make("Isaac-Velocity-Flat-Unitree-Go2-v0", cfg=cfg)
+    env = gym.make(f"Isaac-Velocity-Flat-Unitree-{unitree_robot}-v0", cfg=cfg)
     env = RslRlVecEnvWrapper(env)
     return env

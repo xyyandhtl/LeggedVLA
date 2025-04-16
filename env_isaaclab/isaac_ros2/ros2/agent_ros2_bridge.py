@@ -15,17 +15,24 @@ import omni.replicator.core as rep
 import omni.syntheticdata._syntheticdata as sd
 import subprocess
 import time
-import go2.go2_ctrl as go2_ctrl
+import agent.agent_ctrl as agent_ctrl
 
 ext_manager = omni.kit.app.get_app().get_extension_manager()
 ext_manager.set_extension_enabled_immediate("omni.isaac.ros2_bridge", True)
 from omni.isaac.ros2_bridge import read_camera_info
 
 
+robot_prim_dict = {
+    'unitree_go2' : 'Go2',
+    'unitree_a1' : 'A1',
+}
+
 class RobotDataManager(Node):
     def __init__(self, env, lidar_annotators, cameras, cfg):
         super().__init__("robot_data_manager")
         self.cfg = cfg
+        self.robot_name = self.cfg.robot_name
+        self.prim_name = robot_prim_dict[self.robot_name]
         self.create_ros_time_graph()
         sim_time_set = False
         while (rclpy.ok() and sim_time_set==False):
@@ -57,40 +64,40 @@ class RobotDataManager(Node):
         for i in range(self.num_envs):
             if (self.num_envs == 1):
                 self.odom_pub.append(
-                    self.create_publisher(Odometry, "unitree_go2/odom", 10))
+                    self.create_publisher(Odometry, f"{self.robot_name}/odom", 10))
                 self.pose_pub.append(
-                    self.create_publisher(PoseStamped, "unitree_go2/pose", 10))
+                    self.create_publisher(PoseStamped, f"{self.robot_name}/pose", 10))
                 self.lidar_pub.append(
-                    self.create_publisher(PointCloud2, "unitree_go2/lidar/point_cloud", 10)
+                    self.create_publisher(PointCloud2, f"{self.robot_name}/lidar/point_cloud", 10)
                 )
                 self.semantic_seg_img_vis_pub.append(
-                    self.create_publisher(Image, "unitree_go2/front_cam/semantic_segmentation_image_vis", 10)
+                    self.create_publisher(Image, f"{self.robot_name}/front_cam/semantic_segmentation_image_vis", 10)
                 )
                 self.cmd_vel_sub.append(
-                    self.create_subscription(Twist, "unitree_go2/cmd_vel", 
+                    self.create_subscription(Twist, f"{self.robot_name}/cmd_vel", 
                     lambda msg: self.cmd_vel_callback(msg, 0), 10)
                 )
                 self.semantic_seg_img_sub.append(
-                    self.create_subscription(Image, "/unitree_go2/front_cam/semantic_segmentation_image", 
+                    self.create_subscription(Image, f"/{self.robot_name}/front_cam/semantic_segmentation_image", 
                     lambda msg: self.semantic_segmentation_callback(msg, 0), 10)
                 )
             else:
                 self.odom_pub.append(
-                    self.create_publisher(Odometry, f"unitree_go2_{i}/odom", 10))
+                    self.create_publisher(Odometry, f"{self.robot_name}_{i}/odom", 10))
                 self.pose_pub.append(
-                    self.create_publisher(PoseStamped, f"unitree_go2_{i}/pose", 10))
+                    self.create_publisher(PoseStamped, f"{self.robot_name}_{i}/pose", 10))
                 self.lidar_pub.append(
-                    self.create_publisher(PointCloud2, f"unitree_go2_{i}/lidar/point_cloud", 10)
+                    self.create_publisher(PointCloud2, f"{self.robot_name}_{i}/lidar/point_cloud", 10)
                 )
                 self.semantic_seg_img_vis_pub.append(
-                    self.create_publisher(Image, f"unitree_go2_{i}/front_cam/semantic_segmentation_image_vis", 10)
+                    self.create_publisher(Image, f"{self.robot_name}_{i}/front_cam/semantic_segmentation_image_vis", 10)
                 )
                 self.cmd_vel_sub.append(
-                    self.create_subscription(Twist, f"unitree_go2_{i}/cmd_vel", 
+                    self.create_subscription(Twist, f"{self.robot_name}_{i}/cmd_vel", 
                     lambda msg, env_idx=i: self.cmd_vel_callback(msg, env_idx), 10)
                 )
                 self.semantic_seg_img_sub.append(
-                    self.create_subscription(Image, f"/unitree_go2_{i}/front_cam/semantic_segmentation_image", 
+                    self.create_subscription(Image, f"/{self.robot_name}_{i}/front_cam/semantic_segmentation_image", 
                     lambda msg, env_idx=i: self.semantic_segmentation_callback(msg, env_idx), 10)
                 )
         
@@ -144,11 +151,11 @@ class RobotDataManager(Node):
             base_lidar_transform = TransformStamped()
             base_lidar_transform.header.stamp = self.get_clock().now().to_msg()
             if (self.num_envs == 1):
-                base_lidar_transform.header.frame_id = "unitree_go2/base_link"
-                base_lidar_transform.child_frame_id = "unitree_go2/lidar_frame"
+                base_lidar_transform.header.frame_id = f"{self.robot_name}/base_link"
+                base_lidar_transform.child_frame_id = f"{self.robot_name}/lidar_frame"
             else:
-                base_lidar_transform.header.frame_id = f"unitree_go2_{i}/base_link"
-                base_lidar_transform.child_frame_id = f"unitree_go2_{i}/lidar_frame"
+                base_lidar_transform.header.frame_id = f"{self.robot_name}_{i}/base_link"
+                base_lidar_transform.child_frame_id = f"{self.robot_name}_{i}/lidar_frame"
 
             # Translation
             base_lidar_transform.transform.translation.x = 0.2
@@ -171,11 +178,11 @@ class RobotDataManager(Node):
             base_cam_transform = TransformStamped()
             # base_cam_transform.header.stamp = self.get_clock().now().to_msg()
             if (self.num_envs == 1):
-                base_cam_transform.header.frame_id = "unitree_go2/base_link"
-                base_cam_transform.child_frame_id = "unitree_go2/front_cam"
+                base_cam_transform.header.frame_id = f"{self.robot_name}/base_link"
+                base_cam_transform.child_frame_id = f"{self.robot_name}/front_cam"
             else:
-                base_cam_transform.header.frame_id = f"unitree_go2_{i}/base_link"
-                base_cam_transform.child_frame_id = f"unitree_go2_{i}/front_cam"
+                base_cam_transform.header.frame_id = f"{self.robot_name}_{i}/base_link"
+                base_cam_transform.child_frame_id = f"{self.robot_name}_{i}/front_cam"
 
             # Translation
             base_cam_transform.transform.translation.x = 0.4
@@ -210,7 +217,7 @@ class RobotDataManager(Node):
         if (self.num_envs == 1):
             odom_msg.child_frame_id = "base_link"
         else:
-            odom_msg.child_frame_id = f"unitree_go2_{env_idx}/base_link"
+            odom_msg.child_frame_id = f"{self.robot_name}_{env_idx}/base_link"
         odom_msg.pose.pose.position.x = base_pos[0].item()
         odom_msg.pose.pose.position.y = base_pos[1].item()
         odom_msg.pose.pose.position.z = base_pos[2].item()
@@ -231,9 +238,9 @@ class RobotDataManager(Node):
         map_base_trans.header.stamp = self.get_clock().now().to_msg()
         map_base_trans.header.frame_id = "map"
         if (self.num_envs == 1):
-            map_base_trans.child_frame_id = "unitree_go2/base_link"
+            map_base_trans.child_frame_id = f"{self.robot_name}/base_link"
         else:
-            map_base_trans.child_frame_id = f"unitree_go2_{env_idx}/base_link"
+            map_base_trans.child_frame_id = f"{self.robot_name}_{env_idx}/base_link"
         map_base_trans.transform.translation.x = base_pos[0].item()
         map_base_trans.transform.translation.y = base_pos[1].item()
         map_base_trans.transform.translation.z = base_pos[2].item()
@@ -259,9 +266,9 @@ class RobotDataManager(Node):
     def publish_lidar_data(self, points, env_idx):
         point_cloud = PointCloud2()
         if (self.num_envs == 1):
-            point_cloud.header.frame_id = "unitree_go2/lidar_frame"
+            point_cloud.header.frame_id = f"{self.robot_name}/lidar_frame"
         else:
-            point_cloud.header.frame_id = f"unitree_go2_{env_idx}/lidar_frame"
+            point_cloud.header.frame_id = f"{self.robot_name}_{env_idx}/lidar_frame"
         point_cloud.header.stamp = self.get_clock().now().to_msg()
         fields = [
             PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
@@ -272,7 +279,7 @@ class RobotDataManager(Node):
         self.lidar_pub[env_idx].publish(point_cloud)        
 
     def pub_ros2_data_callback(self):
-        robot_data = self.env.unwrapped.scene["unitree_go2"].data
+        robot_data = self.env.unwrapped.scene[f"{self.robot_name}"].data
         for i in range(self.num_envs):
             self.publish_odom(robot_data.root_state_w[i, :3],
                               robot_data.root_state_w[i, 3:7],
@@ -299,7 +306,7 @@ class RobotDataManager(Node):
 
         if (pub_odom_pose):
             self.odom_pose_pub_time = time.time()
-            robot_data = self.env.unwrapped.scene["unitree_go2"].data
+            robot_data = self.env.unwrapped.scene[f"{self.robot_name}"].data
             for i in range(self.num_envs):
                 self.publish_odom(robot_data.root_state_w[i, :3],
                                 robot_data.root_state_w[i, 3:7],
@@ -315,9 +322,9 @@ class RobotDataManager(Node):
                     self.publish_lidar_data(self.lidar_annotators[i].get_data()["data"].reshape(-1, 3), i)
 
     def cmd_vel_callback(self, msg, env_idx):
-        go2_ctrl.base_vel_cmd_input[env_idx][0] = msg.linear.x
-        go2_ctrl.base_vel_cmd_input[env_idx][1] = msg.linear.y
-        go2_ctrl.base_vel_cmd_input[env_idx][2] = msg.angular.z
+        agent_ctrl.base_vel_cmd_input[env_idx][0] = msg.linear.x
+        agent_ctrl.base_vel_cmd_input[env_idx][1] = msg.linear.y
+        agent_ctrl.base_vel_cmd_input[env_idx][2] = msg.angular.z
     
     def semantic_segmentation_callback(self, img, env_idx):
         bridge = CvBridge()
@@ -335,17 +342,17 @@ class RobotDataManager(Node):
     def pub_image_graph(self):
         for i in range(self.num_envs):
             if (self.num_envs == 1):
-                color_topic_name = "unitree_go2/front_cam/color_image"
-                depth_topic_name = "unitree_go2/front_cam/depth_image"
-                # segmentation_topic_name = "unitree_go2/front_cam/segmentation_image"
-                # depth_cloud_topic_name = "unitree_go2/front_cam/depth_cloud"
-                frame_id = "unitree_go2/front_cam"                         
+                color_topic_name = f"{self.robot_name}/front_cam/color_image"
+                depth_topic_name = f"{self.robot_name}/front_cam/depth_image"
+                # segmentation_topic_name = "{self.robot_name}/front_cam/segmentation_image"
+                # depth_cloud_topic_name = "{self.robot_name}/front_cam/depth_cloud"
+                frame_id = f"{self.robot_name}/front_cam"                         
             else:
-                color_topic_name = f"unitree_go2_{i}/front_cam/color_image"
-                depth_topic_name = f"unitree_go2_{i}/front_cam/depth_image"
-                # segmentation_topic_name = f"unitree_go2_{i}/front_cam/segmentation_image"
-                # depth_cloud_topic_name = f"unitree_go2_{i}/front_cam/depth_cloud"
-                frame_id = f"unitree_go2_{i}/front_cam"
+                color_topic_name = f"{self.robot_name}_{i}/front_cam/color_image"
+                depth_topic_name = f"{self.robot_name}_{i}/front_cam/depth_image"
+                # segmentation_topic_name = f"{self.robot_name}_{i}/front_cam/segmentation_image"
+                # depth_cloud_topic_name = f"{self.robot_name}_{i}/front_cam/depth_cloud"
+                frame_id = f"{self.robot_name}_{i}/front_cam"
             keys = og.Controller.Keys
             og.Controller.edit(
                 {
@@ -363,7 +370,7 @@ class RobotDataManager(Node):
                     ],
 
                     keys.SET_VALUES: [
-                        ("IsaacCreateRenderProduct.inputs:cameraPrim", f"/World/envs/env_{i}/Go2/base/front_cam"),
+                        ("IsaacCreateRenderProduct.inputs:cameraPrim", f"/World/envs/env_{i}/{self.prim_name}/base/front_cam"),
                         ("IsaacCreateRenderProduct.inputs:enabled", True),
                         ("IsaacCreateRenderProduct.inputs:height", 480),
                         ("IsaacCreateRenderProduct.inputs:width", 640),
@@ -415,11 +422,11 @@ class RobotDataManager(Node):
             render_product = self.cameras[i]._render_product_path
             step_size = 1
             if (self.num_envs == 1):
-                topic_name = "unitree_go2/front_cam/color_image"
-                frame_id = "unitree_go2/front_cam"                         
+                topic_name = f"{self.robot_name}/front_cam/color_image"
+                frame_id = f"{self.robot_name}/front_cam"
             else:
-                topic_name = f"unitree_go2_{i}/front_cam/color_image"
-                frame_id = f"unitree_go2_{i}/front_cam"
+                topic_name = f"{self.robot_name}_{i}/front_cam/color_image"
+                frame_id = f"{self.robot_name}_{i}/front_cam"
             node_namespace = ""         
             queue_size = 1
 
@@ -446,11 +453,11 @@ class RobotDataManager(Node):
             render_product = self.cameras[i]._render_product_path
             step_size = 1
             if (self.num_envs == 1):
-                topic_name = "unitree_go2/front_cam/depth_image"                
-                frame_id = "unitree_go2/front_cam"          
+                topic_name = f"{self.robot_name}/front_cam/depth_image"
+                frame_id = f"{self.robot_name}/front_cam"
             else:
-                topic_name = f"unitree_go2_{i}/front_cam/depth_image"
-                frame_id = f"unitree_go2_{i}/front_cam"
+                topic_name = f"{self.robot_name}_{i}/front_cam/depth_image"
+                frame_id = f"{self.robot_name}_{i}/front_cam"
             node_namespace = ""
             queue_size = 1
 
@@ -478,13 +485,13 @@ class RobotDataManager(Node):
             render_product = self.cameras[i]._render_product_path
             step_size = 1
             if (self.num_envs == 1):
-                topic_name = "unitree_go2/front_cam/semantic_segmentation_image"
-                label_topic_name = "unitree_go2/front_cam/semantic_segmentation_label"                       
-                frame_id = "unitree_go2/front_cam"          
+                topic_name = f"{self.robot_name}/front_cam/semantic_segmentation_image"
+                label_topic_name = f"{self.robot_name}/front_cam/semantic_segmentation_label"
+                frame_id = f"{self.robot_name}/front_cam"
             else:
-                topic_name = f"unitree_go2_{i}/front_cam/semantic_segmentation_image"
-                label_topic_name = f"unitree_go2_{i}/front_cam/semantic_segmentation_label"                       
-                frame_id = f"unitree_go2_{i}/front_cam"
+                topic_name = f"{self.robot_name}_{i}/front_cam/semantic_segmentation_image"
+                label_topic_name = f"{self.robot_name}_{i}/front_cam/semantic_segmentation_label"                       
+                frame_id = f"{self.robot_name}_{i}/front_cam"
             node_namespace = ""
             queue_size = 1
 
@@ -522,11 +529,11 @@ class RobotDataManager(Node):
             render_product = self.cameras[i]._render_product_path
             step_size = 1
             if (self.num_envs == 1):
-                topic_name = "unitree_go2/front_cam/depth_cloud"    
-                frame_id = "unitree_go2/front_cam"          
+                topic_name = f"{self.robot_name}/front_cam/depth_cloud"
+                frame_id = f"{self.robot_name}/front_cam"
             else:
-                topic_name = f"unitree_go2_{i}/front_cam/depth_cloud"
-                frame_id = f"unitree_go2_{i}/front_cam"
+                topic_name = f"{self.robot_name}_{i}/front_cam/depth_cloud"
+                frame_id = f"{self.robot_name}_{i}/front_cam"
             node_namespace = ""         
             queue_size = 1
 
@@ -558,9 +565,9 @@ class RobotDataManager(Node):
             render_product = self.cameras[i]._render_product_path
             step_size = 1
             if (self.num_envs == 1):
-                topic_name = "unitree_go2/front_cam/info"
+                topic_name = f"{self.robot_name}/front_cam/info"
             else:
-                topic_name = f"unitree_go2_{i}/front_cam/info"
+                topic_name = f"{self.robot_name}_{i}/front_cam/info"
             queue_size = 1
             node_namespace = ""
             frame_id = self.cameras[i].prim_path.split("/")[-1] # This matches what the TF tree is publishing.

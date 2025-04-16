@@ -13,11 +13,11 @@ from omni.isaac.lab.utils.noise import UniformNoiseCfg
 from omni.isaac.core.utils.viewports import set_camera_view
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-import go2.go2_ctrl as go2_ctrl
+from agent.agent_ctrl import base_vel_cmd
 
 
 @configclass
-class Go2SimCfg(InteractiveSceneCfg):
+class A1SimCfg(InteractiveSceneCfg):
     init_pos = (0, 0, 0)    # mp3d scene search log: mp3d episode init_pos, replace it
     # ground plane
     ground = AssetBaseCfg(prim_path="/World/ground",
@@ -43,9 +43,9 @@ class Go2SimCfg(InteractiveSceneCfg):
     )
     cylinder_light.init_state.pos = (init_pos[0], init_pos[1], init_pos[2] + 2.0)
 
-    # Go2 Robot
-    unitree_go2: ArticulationCfg = UNITREE_GO2_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Go2",
+    # A1 Robot
+    unitree_a1: ArticulationCfg = UNITREE_GO2_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/A1",
         init_state=ArticulationCfg.InitialStateCfg(
             pos=(init_pos[0] - 4, init_pos[1], init_pos[2] + 0.40),
             joint_pos={
@@ -58,16 +58,16 @@ class Go2SimCfg(InteractiveSceneCfg):
             joint_vel={".*": 0.0},
         ),
     )
-    unitree_go2.actuators["base_legs"].stiffness = 40.0
-    unitree_go2.actuators["base_legs"].damping = 1.0
-    print('joint_names_expr:', unitree_go2.actuators["base_legs"].joint_names_expr)
+    unitree_a1.actuators["base_legs"].stiffness = 40.0
+    unitree_a1.actuators["base_legs"].damping = 1.0
+    print('joint_names_expr:', unitree_a1.actuators["base_legs"].joint_names_expr)
 
-    # Go2 foot contact sensor
-    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Go2/.*_foot", history_length=3, track_air_time=True)
+    # A1 foot contact sensor
+    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/A1/.*_foot", history_length=3, track_air_time=True)
 
-    # Go2 height scanner
+    # A1 height scanner
     height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Go2/base",
+        prim_path="{ENV_REGEX_NS}/A1/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.5)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
@@ -81,7 +81,7 @@ class Go2SimCfg(InteractiveSceneCfg):
 @configclass
 class ActionsCfg:
     """Action specifications for the environment."""
-    joint_pos = mdp.JointPositionActionCfg(asset_name="unitree_go2", joint_names=[".*"])
+    joint_pos = mdp.JointPositionActionCfg(asset_name="unitree_a1", joint_names=[".*"])
 
 @configclass
 class ObservationsCfg:
@@ -93,19 +93,19 @@ class ObservationsCfg:
 
         # observation terms (order preserved)
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel,
-                               params={"asset_cfg": SceneEntityCfg(name="unitree_go2")})
+                               params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel,
-                               params={"asset_cfg": SceneEntityCfg(name="unitree_go2")})
+                               params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
         projected_gravity = ObsTerm(func=mdp.projected_gravity,
-                                    params={"asset_cfg": SceneEntityCfg(name="unitree_go2")},
+                                    params={"asset_cfg": SceneEntityCfg(name="unitree_a1")},
                                     noise=UniformNoiseCfg(n_min=-0.05, n_max=0.05))
         # velocity command
-        base_vel_cmd = ObsTerm(func=go2_ctrl.base_vel_cmd)
+        base_vel_cmd = ObsTerm(func=base_vel_cmd)
 
         joint_pos = ObsTerm(func=mdp.joint_pos_rel,
-                            params={"asset_cfg": SceneEntityCfg(name="unitree_go2")})
+                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
         joint_vel = ObsTerm(func=mdp.joint_vel_rel,
-                            params={"asset_cfg": SceneEntityCfg(name="unitree_go2")})
+                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
         actions = ObsTerm(func=mdp.last_action)
         
         # Height scan
@@ -124,7 +124,7 @@ class ObservationsCfg:
 class CommandsCfg:
     """Command specifications for the MDP."""
     base_vel_cmd = mdp.UniformVelocityCommandCfg(
-        asset_name="unitree_go2",
+        asset_name="unitree_a1",
         resampling_time_range=(0.0, 0.0),
         debug_vis=True,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
@@ -156,10 +156,10 @@ class CurriculumCfg:
 
 
 @configclass
-class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
-    """Configuration for the Go2 environment."""
+class A1RSLEnvCfg(ManagerBasedRLEnvCfg):
+    """Configuration for the A1 environment."""
     # scene settings
-    scene = Go2SimCfg(num_envs=2, env_spacing=2.0)
+    scene = A1SimCfg(num_envs=2, env_spacing=2.0)
 
     # basic settings
     observations = ObservationsCfg()
@@ -200,8 +200,8 @@ class Go2RSLEnvCfg(ManagerBasedRLEnvCfg):
 
 def camera_follow(env):
     if (env.unwrapped.scene.num_envs == 1):
-        robot_position = env.unwrapped.scene["unitree_go2"].data.root_state_w[0, :3].cpu().numpy()
-        robot_orientation = env.unwrapped.scene["unitree_go2"].data.root_state_w[0, 3:7].cpu().numpy()
+        robot_position = env.unwrapped.scene["unitree_a1"].data.root_state_w[0, :3].cpu().numpy()
+        robot_orientation = env.unwrapped.scene["unitree_a1"].data.root_state_w[0, 3:7].cpu().numpy()
         rotation = R.from_quat([robot_orientation[1], robot_orientation[2], 
                                 robot_orientation[3], robot_orientation[0]])
         yaw = rotation.as_euler('zyx')[0]

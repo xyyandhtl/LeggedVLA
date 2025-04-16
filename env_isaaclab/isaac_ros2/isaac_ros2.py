@@ -16,27 +16,35 @@ def run_simulator(cfg):
     simulation_app = SimulationApp({"headless": False, "anti_aliasing": cfg.sim_app.anti_aliasing,
                                     "width": cfg.sim_app.width, "height": cfg.sim_app.height, 
                                     "hide_ui": cfg.sim_app.hide_ui})
-
+    # isaacsim extensions can only be import after app start?
     import omni
     import carb
-    import go2.go2_ctrl as go2_ctrl
-    import ros2.go2_ros2_bridge as go2_ros2_bridge
-    from go2.go2_env import Go2RSLEnvCfg, camera_follow
+    from ros2.agent_ros2_bridge import RobotDataManager, robot_prim_dict
     import env.sim_env as sim_env
     import env.matterport3d_env as matterport3d_env
-    import go2.go2_sensors as go2_sensors
+    import agent.agent_sensors as agent_sensors
+    import agent.agent_ctrl as agent_ctrl
 
-    # Go2 Environment setup
-    go2_env_cfg = Go2RSLEnvCfg()
-    go2_env_cfg.scene.num_envs = cfg.num_envs
-    go2_env_cfg.decimation = math.ceil(1. / go2_env_cfg.sim.dt / cfg.freq)
-    print(f'sim.dt {go2_env_cfg.sim.dt}')
-    print(f'decimation {go2_env_cfg.decimation}')
-    go2_env_cfg.sim.render_interval = go2_env_cfg.decimation
-    go2_ctrl.init_base_vel_cmd(cfg.num_envs)
-    print(f'go2_env_cfg policy: {go2_env_cfg.observations.policy}')
-    print(f'go2_env_cfg actuator: {go2_env_cfg.actions}')
-    print(f'go2_env_cfg robot: {go2_env_cfg.scene.unitree_go2}')
+    if cfg.robot_name == 'unitree_go2':
+        from agent.scene_go2 import Go2RSLEnvCfg, camera_follow
+        # Go2 Environment setup
+        env_cfg = Go2RSLEnvCfg()
+    elif cfg.robot_name == 'unitree_a1':
+        from agent.scene_a1 import A1RSLEnvCfg, camera_follow
+        # Go2 Environment setup
+        env_cfg = A1RSLEnvCfg()
+    else:
+        raise NotImplementedError(f'[{cfg.robot_name}] env has not been implemented yet')
+    env_cfg.scene.num_envs = cfg.num_envs
+    env_cfg.decimation = math.ceil(1. / env_cfg.sim.dt / cfg.freq)
+    print(f'sim.dt {env_cfg.sim.dt}')
+    print(f'decimation {env_cfg.decimation}')
+    env_cfg.sim.render_interval = env_cfg.decimation
+    agent_ctrl.init_base_vel_cmd(cfg.num_envs)
+    print(f'{cfg.robot_name} env_cfg policy: {env_cfg.observations.policy}')
+    print(f'{cfg.robot_name} env_cfg actuator: {env_cfg.actions}')
+    print(f'{cfg.robot_name} env_cfg robot: {env_cfg.scene.unitree_go2}')
+
     if cfg.policy == "WMP":
         import sys
         from pathlib import Path
@@ -44,10 +52,11 @@ def run_simulator(cfg):
         sys.path.append(LEGGED_GYM_ROOT_DIR)
         from wmp.wmp_policy import WMPPolicy
         wmp_policy = WMPPolicy()
-        env = go2_ctrl.get_rsl_env(go2_env_cfg)
+        env = agent_ctrl.get_rsl_env(env_cfg, robot_prim_dict[cfg.robot_name])
     else:
-        # env, policy = go2_ctrl.get_rsl_flat_policy(go2_env_cfg)
-        env, policy = go2_ctrl.get_rsl_rough_policy(go2_env_cfg)
+        # only have go2 checkpoints
+        # env, policy = agent_ctrl.get_rsl_flat_policy_go2(go2_env_cfg)
+        env, policy = agent_ctrl.get_rsl_rough_policy_go2(env_cfg)
 
     # Simulation environment
     if (cfg.env_name == "obstacle-dense"):
@@ -72,7 +81,7 @@ def run_simulator(cfg):
         matterport3d_env.create_matterport3d_env(cfg.episode_idx) # matterport3d
 
     # Sensor setup
-    sm = go2_sensors.SensorManager(cfg.num_envs)
+    sm = agent_sensors.SensorManager(cfg.num_envs)
     lidar_annotators = sm.add_rtx_lidar()
     if cfg.policy == "WMP":
         cameras = sm.add_camera_wmp(cfg.freq)
@@ -82,14 +91,14 @@ def run_simulator(cfg):
     # Keyboard control
     system_input = carb.input.acquire_input_interface()
     system_input.subscribe_to_keyboard_events(
-        omni.appwindow.get_default_app_window().get_keyboard(), go2_ctrl.sub_keyboard_event)
+        omni.appwindow.get_default_app_window().get_keyboard(), agent_ctrl.sub_keyboard_event)
     
     # ROS2 Bridge
     rclpy.init()
-    dm = go2_ros2_bridge.RobotDataManager(env, lidar_annotators, cameras, cfg)
+    dm = RobotDataManager(env, lidar_annotators, cameras, cfg)
 
     # Run simulation
-    sim_step_dt = float(go2_env_cfg.sim.dt * go2_env_cfg.decimation)
+    sim_step_dt = float(env_cfg.sim.dt * env_cfg.decimation)
     obs, _ = env.reset()
     obs_list = obs.cpu().numpy().tolist()[0]
     obs_list = ["{:.2f}".format(v) for v in obs_list]
@@ -123,12 +132,12 @@ def run_simulator(cfg):
                         #     f.write("original depth:\n")
                         #     f.write(np.array2string(depth, separator=', ', threshold=np.inf))
                         # 归一化到 0-255（你也可以设置 max_depth 自定义范围）
-                        depth_normalized = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
-                        depth_normalized = depth_normalized.astype(np.uint8)
-                        # 应用伪彩色映射
-                        depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
-                        # 保存图片
-                        cv2.imwrite("depth_visualization.png", depth_colored)
+                        # depth_normalized = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
+                        # depth_normalized = depth_normalized.astype(np.uint8)
+                        # # 应用伪彩色映射
+                        # depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
+                        # # 保存图片
+                        # cv2.imwrite("depth_visualization.png", depth_colored)
                         depth = depth / 2 - 0.5
                         depth[(depth <= -0.5) | (depth > 0.5)] = 0.5
                         depth_tensor[i] = torch.from_numpy(depth.copy())
