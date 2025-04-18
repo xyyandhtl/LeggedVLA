@@ -127,16 +127,6 @@ def run_simulator(cfg):
                     depth = camera.get_depth()
                     if depth is not None:
                         depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
-                        # with open("depth_output.txt", "w") as f:
-                        #     f.write("original depth:\n")
-                        #     f.write(np.array2string(depth, separator=', ', threshold=np.inf))
-                        # 归一化到 0-255（你也可以设置 max_depth 自定义范围）
-                        # depth_normalized = cv2.normalize(depth, None, 0, 255, cv2.NORM_MINMAX)
-                        # depth_normalized = depth_normalized.astype(np.uint8)
-                        # # 应用伪彩色映射
-                        # depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
-                        # # 保存图片
-                        # cv2.imwrite("depth_visualization.png", depth_colored)
                         depth = depth / 2 - 0.5
                         depth[(depth <= -0.5) | (depth > 0.5)] = 0.5
                         depth_tensor[i] = torch.from_numpy(depth.copy())

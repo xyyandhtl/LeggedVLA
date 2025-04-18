@@ -24,4 +24,4 @@ sim_app:
   height: 720
   hide_ui: False
 
-policy: wmp_loco
+policy: him_loco

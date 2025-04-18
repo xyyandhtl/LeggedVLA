@@ -81,7 +81,9 @@ class A1SimCfg(InteractiveSceneCfg):
 @configclass
 class ActionsCfg:
     """Action specifications for the environment."""
-    joint_pos = mdp.JointPositionActionCfg(asset_name="unitree_a1", joint_names=[".*"])
+    joint_pos = mdp.JointPositionActionCfg(asset_name="unitree_a1",
+                                           joint_names=[".*"],  # todo: define joint_name seems useless, why?
+                                           scale=0.25)
 
 @configclass
 class ObservationsCfg:
@@ -91,21 +93,37 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        # Note: himloco policy velocity command is ahead, wmp policy velocity command is behind
-        base_vel_cmd = ObsTerm(func=base_vel_cmd)
         # observation terms (order preserved)
         # base_lin_vel = ObsTerm(func=mdp.base_lin_vel,
         #                        params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel,
+
+        # Note: himloco policy velocity command is ahead, wmp policy velocity command is behind
+        base_vel_cmd = ObsTerm(func=base_vel_cmd)
+
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=0.25,
                                params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
         projected_gravity = ObsTerm(func=mdp.projected_gravity,
                                     params={"asset_cfg": SceneEntityCfg(name="unitree_a1")},
                                     noise=UniformNoiseCfg(n_min=-0.05, n_max=0.05))
 
         joint_pos = ObsTerm(func=mdp.joint_pos_rel,
-                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel,
-                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1")})
+                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1",
+            #                                                     joint_names=[
+            # # 关节顺序明确指定（按 FL, FR, RL, RR 排列）
+            # "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+            # "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+            # "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+            # "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",]
+                                                                )})
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, scale=0.05,
+                            params={"asset_cfg": SceneEntityCfg(name="unitree_a1",
+        #                                                         joint_names=[
+        #     # 关节顺序明确指定（按 FL, FR, RL, RR 排列）
+        #     "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+        #     "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+        #     "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+        #     "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",]
+                                                                )})
         actions = ObsTerm(func=mdp.last_action)
         
         # Height scan
@@ -190,11 +208,11 @@ class A1RSLEnvCfg(ManagerBasedRLEnvCfg):
         # settings for rsl env control
         self.episode_length_s = 20.0 # can be ignored
         self.is_finite_horizon = False
-        self.actions.joint_pos.scale = 0.25
+        # self.actions.joint_pos.scale = 0.25
         # self.observations.policy.base_lin_vel.scale = 2.0
-        self.observations.policy.base_ang_vel.scale = 0.25
-        self.observations.policy.joint_vel.scale = 0.05
-        # self.observations.policy.base_vel_cmd.scale
+        # self.observations.policy.base_ang_vel.scale = 0.25
+        # self.observations.policy.joint_vel.scale = 0.05
+        # self.observations.policy.base_vel_cmd.scale = (2.0, 2.0, 1.0)
 
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt

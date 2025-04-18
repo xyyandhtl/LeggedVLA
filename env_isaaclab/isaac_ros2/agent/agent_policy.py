@@ -16,14 +16,24 @@ class HIMLocoEnvWrapper(RslRlVecEnvWrapper):
         self.history_len = history_len
         self.obs_history = None
 
+        self.base_idx = 9
+        # 用于对特定观测段做通道置换
+        self.reverse_index_list = [0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11]
+        # 输出动作的维度反向映射（用于推理部署）
+        self.forward_index_list = [0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11]
+
     def reset(self):
         obs, info = super().reset()
+        obs = self._permute_obs(obs)
         # 初始化历史观测，维度：[num_envs, history_len, obs_dim]
         self.obs_history = torch.stack([obs] * self.history_len, dim=1)
         return self._get_stacked_obs(), info
 
     def step(self, action):
+        action = action[:, self.forward_index_list]
+
         obs, reward, done, info = super().step(action)
+        obs = self._permute_obs(obs)
         # 更新历史观测
         self.obs_history = torch.cat([obs.unsqueeze(1) ,self.obs_history[:, :-1]], dim=1)
         return self._get_stacked_obs(), reward, done, info
@@ -31,6 +41,17 @@ class HIMLocoEnvWrapper(RslRlVecEnvWrapper):
     def _get_stacked_obs(self):
         # 展平维度：[num_envs, history_len * obs_dim]
         return self.obs_history.reshape(self.obs_history.shape[0], -1)
+
+    def _permute_obs(self, obs):
+        # joint_pos [base_idx : base_idx+12]
+        obs[:, self.base_idx:self.base_idx + 12] = obs[:, self.base_idx:self.base_idx + 12][:, self.reverse_index_list]
+        # joint_vel [base_idx+12 : base_idx+24]
+        obs[:, self.base_idx + 12:self.base_idx + 24] = obs[:, self.base_idx + 12:self.base_idx + 24][:,
+                                                        self.reverse_index_list]
+        # last_action [base_idx+24 : base_idx+36]
+        obs[:, self.base_idx + 24:self.base_idx + 36] = obs[:, self.base_idx + 24:self.base_idx + 36][:,
+                                                        self.reverse_index_list]
+        return obs
 
 
 class WMPObsEnvWrapper(RslRlVecEnvWrapper):
@@ -41,9 +62,9 @@ class WMPObsEnvWrapper(RslRlVecEnvWrapper):
         self.non_privilege_start = 53
         self.non_privilege_end = self.non_privilege_start + self.wmp_obs_dim_deploy
 
+        self.base_idx = self.non_privilege_start + 9
         # 用于对特定观测段做通道置换
         self.reverse_index_list = [0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11]
-
         # 输出动作的维度反向映射（用于推理部署）
         self.forward_index_list = [0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11]
 
@@ -53,7 +74,6 @@ class WMPObsEnvWrapper(RslRlVecEnvWrapper):
         return new_obs, info
 
     def step(self, action):
-        # 将 action 置换
         action = action[:, self.forward_index_list]
 
         obs, reward, done, info = super().step(action)
@@ -66,17 +86,24 @@ class WMPObsEnvWrapper(RslRlVecEnvWrapper):
         # 填入原始观测的非特权部分
         new_obs[:, self.non_privilege_start:self.non_privilege_end] = orig_obs
         # 做 reverse_index 置换的部分：joint_pos, joint_vel, last_action 各12维
-        base_idx = self.non_privilege_start  # 对应45维起始位置
         # wmp cmd_vel is 6:9, while default is 0:3
-        new_obs[:, base_idx: base_idx + 6], new_obs[:, base_idx + 6: base_idx + 9] = \
-            new_obs[:, base_idx + 3: base_idx + 9].clone(), new_obs[:, base_idx: base_idx + 3].clone()
-        # joint_pos: [9:21]
-        new_obs[:, base_idx + 9:base_idx + 21] = new_obs[:, base_idx + 9:base_idx + 21][:, self.reverse_index_list]
-        # joint_vel: [21:33]
-        new_obs[:, base_idx + 21:base_idx + 33] = new_obs[:, base_idx + 21:base_idx + 33][:, self.reverse_index_list]
-        # last_action: [33:45]
-        new_obs[:, base_idx + 33:base_idx + 45] = new_obs[:, base_idx + 33:base_idx + 45][:, self.reverse_index_list]
-        return new_obs
+        # wmp cmd_vel is 6:9, while default is 0:3
+        (new_obs[:, self.non_privilege_start: self.non_privilege_start + 6],
+         new_obs[:, self.non_privilege_start + 6: self.non_privilege_start + 9]) = \
+            (new_obs[:, self.non_privilege_start + 3: self.non_privilege_start + 9].clone(),
+             new_obs[:, self.non_privilege_start: self.non_privilege_start + 3].clone())
+        return self._permute_obs(new_obs)
+
+    def _permute_obs(self, obs):
+        # joint_pos [base_idx : base_idx+12]
+        obs[:, self.base_idx:self.base_idx + 12] = obs[:, self.base_idx:self.base_idx + 12][:, self.reverse_index_list]
+        # joint_vel [base_idx+12 : base_idx+24]
+        obs[:, self.base_idx + 12:self.base_idx + 24] = obs[:, self.base_idx + 12:self.base_idx + 24][:,
+                                                        self.reverse_index_list]
+        # last_action [base_idx+24 : base_idx+36]
+        obs[:, self.base_idx + 24:self.base_idx + 36] = obs[:, self.base_idx + 24:self.base_idx + 36][:,
+                                                        self.reverse_index_list]
+        return obs
 
 
 def get_rsl_flat_policy_go2(cfg):
