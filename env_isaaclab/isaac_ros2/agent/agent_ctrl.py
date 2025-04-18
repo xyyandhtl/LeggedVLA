@@ -1,12 +1,6 @@
-import os
 import torch
 import carb
-import gymnasium as gym
 from omni.isaac.lab.envs import ManagerBasedEnv
-from agent.ctrl_cfg import unitree_go2_flat_cfg, unitree_go2_rough_cfg
-from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlVecEnvWrapper, RslRlOnPolicyRunnerCfg
-from omni.isaac.lab_tasks.utils import get_checkpoint_path
-from rsl_rl.runners import OnPolicyRunner
 
 base_vel_cmd_input = None
 
@@ -24,7 +18,7 @@ def base_vel_cmd(env: ManagerBasedEnv) -> torch.Tensor:
 # Update sub_keyboard_event to modify specific rows of the tensor based on key inputs
 def sub_keyboard_event(event) -> bool:
     global base_vel_cmd_input
-    lin_vel = 1.2
+    lin_vel = 1.5
     ang_vel = 0.5
     
     if base_vel_cmd_input is not None:
@@ -74,38 +68,3 @@ class AgentResetControl:
                 print("[KEYBOARD] Reset key pressed")
                 self.reset_flag = True
 
-def get_rsl_flat_policy_go2(cfg):
-    cfg.observations.policy.height_scan = None
-    env = gym.make("Isaac-Velocity-Flat-Unitree-Go2-v0", cfg=cfg)
-    # env = gym.make("Isaac-Velocity-Flat-Unitree-A1-v0", cfg=cfg)
-    env = RslRlVecEnvWrapper(env)
-
-    # Low level control: rsl control policy
-    agent_cfg: RslRlOnPolicyRunnerCfg = unitree_go2_flat_cfg
-    ckpt_path = get_checkpoint_path(log_path=os.path.abspath("ckpts"), 
-                                    run_dir=agent_cfg["load_run"], 
-                                    checkpoint=agent_cfg["load_checkpoint"])
-    ppo_runner = OnPolicyRunner(env, agent_cfg, log_dir=None, device=agent_cfg["device"])
-    ppo_runner.load(ckpt_path)
-    policy = ppo_runner.get_inference_policy(device=agent_cfg["device"])
-    return env, policy
-
-def get_rsl_rough_policy_go2(cfg):
-    env = gym.make("Isaac-Velocity-Rough-Unitree-Go2-v0", cfg=cfg)
-    env = RslRlVecEnvWrapper(env)
-
-    # Low level control: rsl control policy
-    agent_cfg: RslRlOnPolicyRunnerCfg = unitree_go2_rough_cfg
-    ckpt_path = get_checkpoint_path(log_path=os.path.abspath("ckpts"), 
-                                    run_dir=agent_cfg["load_run"], 
-                                    checkpoint=agent_cfg["load_checkpoint"])
-    ppo_runner = OnPolicyRunner(env, agent_cfg, log_dir=None, device=agent_cfg["device"])
-    ppo_runner.load(ckpt_path)
-    policy = ppo_runner.get_inference_policy(device=agent_cfg["device"])
-    return env, policy
-
-def get_rsl_env(cfg, unitree_robot):
-    cfg.observations.policy.height_scan = None
-    env = gym.make(f"Isaac-Velocity-Flat-Unitree-{unitree_robot}-v0", cfg=cfg)
-    env = RslRlVecEnvWrapper(env)
-    return env

@@ -48,19 +48,23 @@ def run_simulator(cfg):
     print(f'{cfg.robot_name} env_cfg policy: {env_cfg.observations.policy}')
     print(f'{cfg.robot_name} env_cfg actuator: {env_cfg.actions}')
 
-    if cfg.policy == "WMP":
-        import sys
-        from pathlib import Path
-        LEGGED_GYM_ROOT_DIR = str(Path(__file__).resolve().parent.parent.parent / 'training_loco/WMP_loco')
-        sys.path.append(LEGGED_GYM_ROOT_DIR)
-        from wmp.wmp_policy import WMPPolicy
-        wmp_policy = WMPPolicy()
-        env = agent_ctrl.get_rsl_env(env_cfg, robot_prim_dict[cfg.robot_name])
-        cameras_depth = sm.add_camera_wmp(cfg.freq)
-    else:
+    if cfg.policy == 'default':
+        from agent.agent_policy import get_rsl_rough_policy_go2
         # only have go2 checkpoints
         # env, policy = agent_ctrl.get_rsl_flat_policy_go2(go2_env_cfg)
-        env, policy = agent_ctrl.get_rsl_rough_policy_go2(env_cfg)
+        env, policy = get_rsl_rough_policy_go2(env_cfg)
+    elif cfg.policy == "wmp_loco":
+        from agent.agent_policy import load_policy_wmp, get_rsl_env_wmp
+        wmp_policy = load_policy_wmp(robot_name=cfg.robot_name)
+        env = get_rsl_env_wmp(env_cfg, robot_prim_dict[cfg.robot_name])
+        cameras_depth = sm.add_camera_wmp(cfg.freq)
+    elif cfg.policy == "him_loco":
+        from agent.agent_policy import load_policy_himloco, get_rsl_env_himloco
+        env = get_rsl_env_himloco(env_cfg, robot_prim_dict[cfg.robot_name])
+        policy = load_policy_himloco(robot_name=cfg.robot_name)
+    else:
+        raise NotImplementedError(f'Policy {cfg.policy} not implemented')
+
     # Sensor setup
     cameras = sm.add_camera(cfg.freq)
     lidar_annotators = sm.add_rtx_lidar()
@@ -104,33 +108,19 @@ def run_simulator(cfg):
     obs, _ = env.reset()
     obs_list = obs.cpu().numpy().tolist()[0]
     obs_list = ["{:.2f}".format(v) for v in obs_list]
-    print(f'init obs: {obs_list}')
+    print(f'init obs shape {obs.shape}: {obs_list}')
 
     while simulation_app.is_running():
-        # if reset_ctrl.reset_flag:
-        #     obs, _ = env.reset()
+        # if reset_ctrl.reset_flag: # todo: how to reset?
+        #     obs, _ = env.unwrapped().reset()
         #     simulation_app.update()
         #     print(f'env reset done')
-        #     # if cfg.policy == "WMP":
-        #     #     wmp_policy.reset_envs([0])
         #     reset_ctrl.reset_flag = False
         start_time = time.time()
         with torch.inference_mode():
-            if cfg.policy == "WMP":
-                # todo: debug what's wrong with wmp migration in isaaclab
-                wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
-                actions = wmp_policy.inference_action(wmp_obs)
-                obs_list = obs.cpu().numpy().tolist()[0]
-                obs_list = ["{:.2f}".format(v) for v in obs_list]
-                print(f'obs: {obs_list}')
-                print(f'[{start_time}] actions: {actions}')
-                forward_index_list = [
-                    0, 3, 6, 9,  # hip joints
-                    1, 4, 7, 10,  # thigh joints
-                    2, 5, 8, 11  # calf joints
-                ]
-                # forward_index_list = [0, 6, 3, 9, 1, 7, 4, 10, 2, 8, 5, 11]
-                obs, _, _, _ = env.step(actions[:, forward_index_list])
+            if cfg.policy == "wmp_loco":
+                actions = wmp_policy.inference_action(obs)
+                obs, _, _, _ = env.step(actions)
                 # step the environment
                 depth_tensor = torch.zeros((cfg.num_envs, 64, 64), dtype=torch.float32)
                 for i, camera in enumerate(cameras_depth):
@@ -150,9 +140,8 @@ def run_simulator(cfg):
                         depth = depth / 2 - 0.5
                         depth[(depth <= -0.5) | (depth > 0.5)] = 0.5
                         depth_tensor[i] = torch.from_numpy(depth.copy())
-                wmp_obs = wmp_policy.obs_convert_from_lab_env(obs)
-                # wmp_policy.update_wm(actions, wmp_obs, torch.from_numpy(np.ones(wmp_policy.depth_resized) * 0.5))
-                wmp_policy.update_wm(actions, wmp_obs, depth_tensor)
+                # wmp_policy.update_wm(actions, obs, torch.from_numpy(np.ones(wmp_policy.depth_resized) * 0.5))
+                wmp_policy.update_wm(actions, obs, depth_tensor)
             else:
                 actions = policy(obs)
                 obs, _, _, _ = env.step(actions)

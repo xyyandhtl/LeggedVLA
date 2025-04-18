@@ -49,7 +49,7 @@ class Go2SimCfg(InteractiveSceneCfg):
     unitree_go2: ArticulationCfg = UNITREE_GO2_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Go2",
         init_state=ArticulationCfg.InitialStateCfg(
-            pos=(init_pos[0] - 4, init_pos[1], init_pos[2] + 0.40),
+            pos=(init_pos[0], init_pos[1], init_pos[2] + 0.40),
             joint_pos={
                 ".*L_hip_joint": 0.1,
                 ".*R_hip_joint": -0.1,

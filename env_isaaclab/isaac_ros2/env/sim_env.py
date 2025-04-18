@@ -75,10 +75,10 @@ def create_obstacle_dense_env():
             sub_terrains={"t1": HfUniformDiscreteObstaclesTerrainCfg(
                 seed=0,
                 size=(50, 50),
-                obstacle_width_range=(1.0, 3.0),
-                obstacle_height_range=(0.1, 0.3),
-                num_obstacles=250,
-                obstacles_distance=1.0,
+                obstacle_width_range=(1.0, 2.0),
+                obstacle_height_range=(0.1, 1.0),
+                num_obstacles=500,
+                obstacles_distance=0.4,
                 border_width=5,
                 platform_width=2.0,
                 avoid_positions=[[0, 0]]
